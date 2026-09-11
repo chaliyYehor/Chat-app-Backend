@@ -1,14 +1,15 @@
-import express from 'express'
-import http from 'http'
-import 'dotenv/config'
-import { Server } from 'socket.io'
 import cors from 'cors'
+import 'dotenv/config'
+import express from 'express'
 import { xss } from 'express-xss-sanitizer'
 import helmet from 'helmet'
+import http from 'http'
 import { StatusCodes } from 'http-status-codes'
+import { Server } from 'socket.io'
+import './lib/jobs/health-check.js'
 import { errorMiddleware } from './middleware/errorHandlingMiddleware.js'
 
-const PORT = process.env.PORT
+const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 
 const app = express()
@@ -38,7 +39,8 @@ app.use(
 app.use(express.json())
 app.use(xss())
 
-app.get('/', (req, res) => {
+app.get('/health', (req, res) => {
+	console.log('Health check endpoint hit')
 	res.status(StatusCodes.OK).send()
 })
 
