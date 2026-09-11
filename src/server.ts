@@ -11,11 +11,12 @@ import { errorMiddleware } from './middleware/errorHandlingMiddleware.js'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
+const VERCEL_CLIENT_URL = process.env.VERCEL_CLIENT_URL as string
 
 const app = express()
 const server = http.createServer(app)
 
-const allowedOrigins = [CLIENT_URL]
+const allowedOrigins = [CLIENT_URL, VERCEL_CLIENT_URL]
 
 const io = new Server(server, {
 	path: '/ws',
