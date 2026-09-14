@@ -8,6 +8,8 @@ import { StatusCodes } from 'http-status-codes'
 import { Server } from 'socket.io'
 import './lib/jobs/health-check.js'
 import { errorMiddleware } from './middleware/errorHandlingMiddleware.js'
+import { toNodeHandler } from 'better-auth/node'
+import { auth } from './lib/auth.js'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -39,6 +41,8 @@ app.use(
 
 app.use(express.json())
 app.use(xss())
+
+app.all('/api/auth/*splat', toNodeHandler(auth))
 
 app.get('/health', (req, res) => {
 	res.status(StatusCodes.OK).send()
