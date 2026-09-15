@@ -24,12 +24,16 @@ export const auth = betterAuth({
 		requireEmailVerification: true,
 
 		sendResetPassword: async ({ user, url }) => {
-			await resend.emails.send({
+			const { error } = await resend.emails.send({
 				from: `Chat App <${process.env.RESEND_EMAIL_ADDRESS as string}>`,
 				to: user.email,
 				subject: 'Reset your password',
 				react: ResetPasswordEmail({ username: user.name, resetUrl: url }),
 			})
+			if (error) {
+				console.error(error)
+				throw new Error('Failed to send password reset email')
+			}
 		},
 	},
 
@@ -42,8 +46,8 @@ export const auth = betterAuth({
 		},
 		github: {
 			clientId: process.env.GITHUB_CLIENT_ID as string,
-			clientSecret: process.env.GITHUB_CLIENT_SECRET as string
-		}
+			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
+		},
 	},
 
 	account: {
