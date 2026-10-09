@@ -108,6 +108,7 @@ export const accountRelations = relations(account, ({ one }) => ({
 // application
 
 export const statusEnum = pgEnum('status', ['online', 'away', 'offline'])
+export const themeEnum = pgEnum('theme', ['light', 'dark'])
 
 export const userProfile = pgTable('user_profile', {
 	userId: text('user_id')
@@ -116,6 +117,7 @@ export const userProfile = pgTable('user_profile', {
 	profilePicture: text('profile_picture'),
 	about: text('about'),
 	name: text('name').notNull(),
+	theme: themeEnum('theme').default('dark').notNull(),
 	userPubId: text('user_pub_id').notNull().unique(),
 	status: statusEnum('status').default('offline').notNull(),
 	lastSeen: timestamp('last_seen', { withTimezone: true })
