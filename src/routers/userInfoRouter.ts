@@ -1,13 +1,10 @@
-import express, { NextFunction, Request, Response } from 'express'
+import express from 'express'
 import { getUserInfoHandler } from '../controllers/getUserInfoHandler.js'
-import { authenticationMiddleware } from '../middleware/authenticationMiddleware.js'
+import { changeThemeHandler } from '../controllers/changeTheme.js'
 
 const router = express.Router()
 
-router.get(
-	'/getUserInfo',
-	authenticationMiddleware,
-	getUserInfoHandler
-)
+router.get('/getUserInfo', getUserInfoHandler)
 
+router.patch('/changeTheme', changeThemeHandler)
 export default router
