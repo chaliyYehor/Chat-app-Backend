@@ -1,5 +1,18 @@
-import { relations } from 'drizzle-orm'
-import { pgTable, text, timestamp, boolean, index } from 'drizzle-orm/pg-core'
+import { relations, sql } from 'drizzle-orm'
+import {
+	pgTable,
+	text,
+	timestamp,
+	boolean,
+	index,
+	pgEnum,
+	date,
+	integer,
+} from 'drizzle-orm/pg-core'
+
+import { check, primaryKey, unique } from 'drizzle-orm/pg-core'
+
+// auth
 
 export const user = pgTable('user', {
 	id: text('id').primaryKey(),
@@ -91,3 +104,112 @@ export const accountRelations = relations(account, ({ one }) => ({
 		references: [user.id],
 	}),
 }))
+
+// application
+
+export const statusEnum = pgEnum('status', ['online', 'away', 'offline'])
+
+export const userProfile = pgTable('user_profile', {
+	userId: text('user_id')
+		.references(() => user.id, { onDelete: 'cascade' })
+		.notNull(),
+	profilePicture: text('profile_picture'),
+	about: text('about'),
+	name: text('name').notNull(),
+	userPubId: text('user_pub_id').notNull().unique(),
+	status: statusEnum('status').default('offline').notNull(),
+	lastSeen: timestamp('last_seen', { withTimezone: true })
+		.defaultNow()
+		.notNull(),
+	createdAt: timestamp('created_at', {
+		withTimezone: true,
+	})
+		.defaultNow()
+		.notNull(),
+
+	updatedAt: timestamp('updated_at', {
+		withTimezone: true,
+	})
+		.defaultNow()
+		.notNull(),
+})
+
+export const conversationStatus = pgEnum('conversation_status', [
+	'pinned',
+	'unpinned',
+])
+
+export const conversation = pgTable(
+	'conversation',
+	{
+		id: text('id').primaryKey(),
+
+		userOneId: text('user_one_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+
+		userTwoId: text('user_two_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+
+		lastMessageId: text('last_message_id'),
+		lastMessageAt: timestamp('last_message_at', {
+			withTimezone: true,
+		}),
+
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+	},
+	table => [
+		unique('conversation_users_unique').on(table.userOneId, table.userTwoId),
+
+		check(
+			'conversation_users_different',
+			sql`${table.userOneId} <> ${table.userTwoId}`,
+		),
+
+		index('conversation_user_one_idx').on(table.userOneId),
+		index('conversation_user_two_idx').on(table.userTwoId),
+	],
+)
+
+export const conversationUser = pgTable(
+    'conversation_user',
+    {
+        conversationId: text('conversation_id')
+            .notNull()
+            .references(() => conversation.id, { onDelete: 'cascade' }),
+
+        userId: text('user_id')
+            .notNull()
+            .references(() => user.id, { onDelete: 'cascade' }),
+
+        isPinned: boolean('is_pinned').default(false).notNull(),
+
+        lastReadMessageId: text('last_read_message_id'),
+
+				unreadMessagesCount: integer('unread_messages_count').default(0).notNull(),
+
+        createdAt: timestamp('created_at', {
+            withTimezone: true,
+        })
+            .defaultNow()
+            .notNull(),
+    },
+    table => [
+        primaryKey({
+            columns: [table.conversationId, table.userId],
+        }),
+
+        index('conversation_user_user_id_idx').on(table.userId),
+    ],
+)
