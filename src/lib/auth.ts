@@ -4,6 +4,8 @@ import { db } from '../db/db.js'
 import { Resend } from 'resend'
 import ResetPasswordEmail from '../emails/reset-password.js'
 import VerificationEmail from '../emails/verification.js'
+import { userProfile } from '../db/schemas/schema.js'
+import { randomInt } from 'crypto'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -16,6 +18,21 @@ export const auth = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: 'pg',
 	}),
+
+	databaseHooks: {
+		user: {
+			create: {
+				after: async user => {
+					await db.insert(userProfile).values({
+						userId: user.id,
+						userPubId: String(randomInt(1000, 100000)),
+						name: user.name,
+						status: 'online'
+					})
+				}
+			}
+		}
+	},
 
 	trustedOrigins: allowedOrigins,
 
