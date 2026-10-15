@@ -185,33 +185,43 @@ export const conversation = pgTable(
 )
 
 export const conversationUser = pgTable(
-    'conversation_user',
-    {
-        conversationId: text('conversation_id')
-            .notNull()
-            .references(() => conversation.id, { onDelete: 'cascade' }),
+	'conversation_user',
+	{
+		conversationId: text('conversation_id')
+			.notNull()
+			.references(() => conversation.id, { onDelete: 'cascade' }),
 
-        userId: text('user_id')
-            .notNull()
-            .references(() => user.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
 
-        isPinned: boolean('is_pinned').default(false).notNull(),
+		isPinned: boolean('is_pinned').default(false).notNull(),
 
-        lastReadMessageId: text('last_read_message_id'),
+		lastReadMessageId: text('last_read_message_id'),
 
-				unreadMessagesCount: integer('unread_messages_count').default(0).notNull(),
+		unreadMessagesCount: integer('unread_messages_count').default(0).notNull(),
 
-        createdAt: timestamp('created_at', {
-            withTimezone: true,
-        })
-            .defaultNow()
-            .notNull(),
-    },
-    table => [
-        primaryKey({
-            columns: [table.conversationId, table.userId],
-        }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+	},
+	table => [
+		primaryKey({
+			columns: [table.conversationId, table.userId],
+		}),
 
-        index('conversation_user_user_id_idx').on(table.userId),
-    ],
+		index('conversation_user_user_id_idx').on(table.userId),
+	],
 )
+
+export const userPreferences = pgTable('user_preferences', {
+	userId: text('user_id')
+		.references(() => user.id, { onDelete: 'cascade' })
+		.notNull(),
+	typingSounds: boolean('typing_sounds').default(true),
+	messageSounds: boolean('message_sounds').default(true),
+	readReceipts: boolean('read_receipts').default(true),
+	lastSeen: boolean('last_seen').default(true),
+})

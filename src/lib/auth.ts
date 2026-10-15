@@ -4,7 +4,7 @@ import { db } from '../db/db.js'
 import { Resend } from 'resend'
 import ResetPasswordEmail from '../emails/reset-password.js'
 import VerificationEmail from '../emails/verification.js'
-import { userProfile } from '../db/schemas/schema.js'
+import { userPreferences, userProfile } from '../db/schemas/schema.js'
 import { randomInt } from 'crypto'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
@@ -29,8 +29,11 @@ export const auth = betterAuth({
 						name: user.name,
 						status: 'online'
 					})
-				}
-			}
+					await db.insert(userPreferences).values({
+						userId: user.id
+					})
+				},
+			},
 		}
 	},
 
