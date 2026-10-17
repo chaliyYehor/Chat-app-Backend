@@ -114,7 +114,8 @@ export const userProfile = pgTable('user_profile', {
 	userId: text('user_id')
 		.references(() => user.id, { onDelete: 'cascade' })
 		.notNull(),
-	profilePicture: text('profile_picture'),
+	imageUrl: text('image_url'),
+	imagePubId: text('image_pub_id'),
 	about: text('about'),
 	name: text('name').notNull(),
 	theme: themeEnum('theme').default('dark').notNull(),
