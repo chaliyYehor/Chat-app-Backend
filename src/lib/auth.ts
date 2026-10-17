@@ -6,6 +6,7 @@ import ResetPasswordEmail from '../emails/reset-password.js'
 import VerificationEmail from '../emails/verification.js'
 import { userPreferences, userProfile } from '../db/schemas/schema.js'
 import { randomInt } from 'crypto'
+import { eq } from 'drizzle-orm'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -18,6 +19,12 @@ export const auth = betterAuth({
 	database: drizzleAdapter(db, {
 		provider: 'pg',
 	}),
+
+	user: {
+		deleteUser: {
+			enabled: true
+		}
+	},
 
 	databaseHooks: {
 		user: {
@@ -34,6 +41,12 @@ export const auth = betterAuth({
 					})
 				},
 			},
+			delete: {
+				before: async user => {
+					await db.delete(userProfile).where(eq(userProfile.userId, user.id))
+					await db.delete(userPreferences).where(eq(userPreferences.userId, user.id))
+				}
+			}
 		}
 	},
 
