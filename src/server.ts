@@ -12,6 +12,7 @@ import { toNodeHandler } from 'better-auth/node'
 import { auth } from './lib/auth.js'
 import userInfoRouter from './routers/userInfoRouter.js'
 import { authenticationMiddleware } from './middleware/authenticationMiddleware.js'
+import messagesRouter from './routers/messagesRouter.js'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -45,6 +46,7 @@ app.use(xss())
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
 app.use('/api/user', authenticationMiddleware, userInfoRouter)
+app.use('/api/chat', authenticationMiddleware, messagesRouter)
 
 app.get('/health', (req, res) => {
 	res.status(StatusCodes.OK).send()

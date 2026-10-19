@@ -1,13 +1,13 @@
 import { NextFunction, Request, Response } from 'express'
 import multer from 'multer'
 import { v2 as cloudinary } from 'cloudinary'
-import { editUserProfileInfoSchema } from '../schemas/editUserProfileInfo.js'
-import { BadRequestError } from '../errors/badRequest.js'
 import fs from 'fs/promises'
-import { db } from '../db/db.js'
-import { userProfile } from '../db/schemas/schema.js'
 import { eq } from 'drizzle-orm'
 import { StatusCodes } from 'http-status-codes'
+import { editUserProfileInfoSchema } from '../../schemas/editUserProfileInfo.js'
+import { BadRequestError } from '../../errors/badRequest.js'
+import { userProfile } from '../../db/schemas/schema.js'
+import { db } from '../../db/db.js'
 
 cloudinary.config({
 	cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

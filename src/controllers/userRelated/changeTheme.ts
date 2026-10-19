@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express'
-import { db } from '../db/db.js'
 import z from 'zod'
-import { BadRequestError } from '../errors/badRequest.js'
-import { userProfile } from '../db/schemas/schema.js'
 import { eq } from 'drizzle-orm'
+import { BadRequestError } from '../../errors/badRequest.js'
+import { db } from '../../db/db.js'
+import { userProfile } from '../../db/schemas/schema.js'
 
 export const changeThemeHandler = async (
 	req: Request,

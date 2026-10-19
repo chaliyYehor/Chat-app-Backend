@@ -1,9 +1,9 @@
-import { NextFunction, Request, Response } from 'express'
-import { BadRequestError } from '../errors/badRequest.js'
-import { db } from '../db/db.js'
-import { userPreferences } from '../db/schemas/schema.js'
-import z from 'zod'
 import { eq } from 'drizzle-orm'
+import { NextFunction, Request, Response } from 'express'
+import z from 'zod'
+import { db } from '../../db/db.js'
+import { userPreferences } from '../../db/schemas/schema.js'
+import { BadRequestError } from '../../errors/badRequest.js'
 
 export const changeUserPreferences = async (
 	req: Request,

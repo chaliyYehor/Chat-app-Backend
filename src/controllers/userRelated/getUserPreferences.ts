@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from 'express'
-import { BadRequestError } from '../errors/badRequest.js'
-import { db } from '../db/db.js'
 import { eq } from 'drizzle-orm'
-import { userPreferences } from '../db/schemas/schema.js'
 import { StatusCodes } from 'http-status-codes'
 import z from 'zod'
+import { db } from '../../db/db.js'
+import { userPreferences } from '../../db/schemas/schema.js'
+import { BadRequestError } from '../../errors/badRequest.js'
 
 export const getUserPreferences = async (req: Request, res: Response, next: NextFunction) => {
 	const userId = req.session.user.id

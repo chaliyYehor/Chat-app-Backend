@@ -1,12 +1,9 @@
 import express from 'express'
-import { getUserInfoHandler } from '../controllers/getUserInfoHandler.js'
-import { changeThemeHandler } from '../controllers/changeTheme.js'
-import { getUserPreferences } from '../controllers/getUserPreferences.js'
-import { changeUserPreferences } from '../controllers/changeUserPreferences.js'
-import {
-	editUserProfileSettings,
-	upload,
-} from '../controllers/editUserProfileSettings.js'
+import { changeUserPreferences } from '../controllers/userRelated/changeUserPreferences.js'
+import { getUserInfoHandler } from '../controllers/userRelated/getUserInfoHandler.js'
+import { getUserPreferences } from '../controllers/userRelated/getUserPreferences.js'
+import { changeThemeHandler } from '../controllers/userRelated/changeTheme.js'
+import { editUserProfileSettings, upload } from '../controllers/userRelated/editUserProfileSettings.js'
 
 const router = express.Router()
 
