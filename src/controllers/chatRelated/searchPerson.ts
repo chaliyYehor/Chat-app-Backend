@@ -26,6 +26,7 @@ export const searchPerson = async (req: Request, res: Response, next: NextFuncti
 				name: userProfile.name,
 				imageUrl: userProfile.imageUrl,
 				status: userProfile.status,
+				previouslySetStatus: userProfile.previouslySetStatus,
 			})
 			.from(userProfile)
 			.where(

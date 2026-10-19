@@ -107,7 +107,12 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 // application
 
-export const statusEnum = pgEnum('status', ['online', 'away', 'offline'])
+export const previouslySetStatusEnum = pgEnum('previously_set_status', [
+	'online',
+	'away',
+	'offline',
+])
+export const statusEnum = pgEnum('status', ['online', 'offline'])
 export const themeEnum = pgEnum('theme', ['light', 'dark'])
 
 export const userProfile = pgTable('user_profile', {
@@ -120,6 +125,9 @@ export const userProfile = pgTable('user_profile', {
 	name: text('name').notNull(),
 	theme: themeEnum('theme').default('dark').notNull(),
 	userPubId: text('user_pub_id').notNull().unique(),
+	previouslySetStatus: previouslySetStatusEnum('previously_set_status')
+		.default('online')
+		.notNull(),
 	status: statusEnum('status').default('offline').notNull(),
 	lastSeen: timestamp('last_seen', { withTimezone: true })
 		.defaultNow()

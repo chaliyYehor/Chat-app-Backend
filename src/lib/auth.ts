@@ -34,7 +34,8 @@ export const auth = betterAuth({
 						userId: user.id,
 						userPubId: String(randomInt(1000, 100000)),
 						name: user.name,
-						status: 'online'
+						status: 'online',
+						previouslySetStatus: 'online',
 					})
 					await db.insert(userPreferences).values({
 						userId: user.id

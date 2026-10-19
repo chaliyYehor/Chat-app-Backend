@@ -29,7 +29,7 @@ export const editUserProfileSettings = async (
 		return next(new BadRequestError('Invalid user input'))
 	}
 
-	const { bio, email, name, status } = parsed.data
+	const { bio, email, name, previouslySetStatus } = parsed.data
 	try {
 		let imageUrl = ''
 		let imagePublicId = ''
@@ -53,7 +53,7 @@ export const editUserProfileSettings = async (
 		const data = {
 			name,
 			about: bio,
-			status,
+			previouslySetStatus,
 			updatedAt: new Date(),
 			...(req.file && {
 				imageUrl,
