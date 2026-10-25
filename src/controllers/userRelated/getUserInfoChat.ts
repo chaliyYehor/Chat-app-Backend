@@ -1,5 +1,5 @@
 import { and, eq, or } from 'drizzle-orm'
-import { conversation, userProfile } from '../../db/schemas/schema.js'
+import { conversation, user, userProfile } from '../../db/schemas/schema.js'
 import { NextFunction, Request, Response } from 'express'
 import z from 'zod'
 import { BadRequestError } from '../../errors/badRequest.js'
@@ -53,7 +53,21 @@ export const getUserInfoChat = async (
 			return next(new BadRequestError('User profile not found'))
 		}
 
-		return res.status(200).json(userInfo)
+		const userAccount = await db.query.user.findFirst({
+			where: eq(user.id, otherUserId),
+			columns: {
+				email: true,
+			},
+		})
+
+		if (!userAccount) {
+			return next(new BadRequestError('User account not found'))
+		}
+
+		return res.status(200).json({
+			...userInfo,
+			email: userAccount.email,
+		})
 	} catch (error) {
 		return next(error)
 	}
