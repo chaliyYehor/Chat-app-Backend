@@ -113,7 +113,7 @@ io.on('connection', async socket => {
 		'chat:create-chat',
 		async (
 			data: { userId: string },
-			cb: ({ success, error }: { success: boolean; error?: string }) => void,
+			cb: ({ success, error, conversationId }: { success: boolean; error?: string, conversationId?: string }) => void,
 		) => {
 			if (!cb || typeof cb !== 'function') {
 				console.error('Callback function is not provided or is not a function')
@@ -167,7 +167,8 @@ io.on('connection', async socket => {
 				if (existingConversation) {
 					cb({
 						success: false,
-						error: 'Conversation already exists : ' + existingConversation.id,
+						error: 'Conversation already exists',
+						conversationId: existingConversation.id,
 					})
 					return
 				}
@@ -200,6 +201,7 @@ io.on('connection', async socket => {
 				
 				cb({
 					success: true,
+					conversationId,
 				})
 			} catch (error) {
 				console.error('Failed to create chat:', error)
