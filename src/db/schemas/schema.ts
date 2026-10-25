@@ -234,3 +234,16 @@ export const userPreferences = pgTable('user_preferences', {
 	readReceipts: boolean('read_receipts').default(true),
 	lastSeen: boolean('last_seen').default(true),
 })
+
+export const messageTypeEnum = pgEnum('message_type', ['text_or_image', 'image'])
+export const message = pgTable('message', {
+	conversationId: text('conversation_id').references(() => conversation.id, { onDelete: 'cascade' }).notNull(),
+	id: text('id').primaryKey(),
+	senderId: text('sender_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	read: boolean('read').default(false).notNull(),
+	type: messageTypeEnum('type').default('text_or_image').notNull(),
+	text: text('text'),
+	imageUrl: text('image_url'),
+	imagePubId: text('image_pub_id'),
+})
