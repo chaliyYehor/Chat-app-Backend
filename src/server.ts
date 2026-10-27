@@ -105,7 +105,7 @@ io.on('connection', async socket => {
 		try {
 			await db
 				.update(userProfile)
-				.set({ status: 'offline' })
+				.set({ status: 'offline', lastSeen: new Date() })
 				.where(eq(userProfile.userId, socket.data.id))
 		} catch (error) {
 			console.error('Error during socket disconnection:', error)
@@ -365,6 +365,118 @@ io.on('connection', async socket => {
 				cb({
 					success: false,
 					error: 'Failed to pin chat',
+				})
+			}
+		},
+	)
+
+	socket.on(
+		'chat:clear-chat',
+		async (
+			data,
+			cb: ({ success, error }: { success: boolean; error?: string }) => void,
+		) => {
+			if (!cb || typeof cb !== 'function') {
+				console.error('Callback function is not provided or is not a function')
+				return
+			}
+
+			const parsed = z
+				.object({ conversationId: z.string().trim().min(1) })
+				.safeParse(data)
+
+			if (!parsed.success) {
+				cb({ success: false, error: 'Invalid data' })
+				return
+			}
+
+			const { conversationId } = parsed.data
+			const userId = socket.data.id
+
+			try {
+				const checkIfUserIsInConversation =
+					await db.query.conversation.findFirst({
+						where: and(
+							eq(conversation.id, parsed.data.conversationId),
+							or(
+								eq(conversation.userOneId, userId),
+								eq(conversation.userTwoId, userId),
+							),
+						),
+						columns: {
+							userOneId: true,
+							userTwoId: true,
+						},
+					})
+
+				if (!checkIfUserIsInConversation) {
+					cb({ success: false, error: 'User is not part of this conversation' })
+					return
+				}
+
+				const otherUserId =
+					checkIfUserIsInConversation.userOneId === userId
+						? checkIfUserIsInConversation.userTwoId
+						: checkIfUserIsInConversation.userOneId
+
+				const chatImages = await db.query.message.findMany({
+					where: eq(message.conversationId, conversationId),
+					columns: {
+						imagePubId: true,
+					},
+				})
+
+				const imagePublicIds = chatImages
+					.map(chatMessage => chatMessage.imagePubId)
+					.filter((publicId): publicId is string => Boolean(publicId))
+
+				const imageDeleteResults = await Promise.all(
+					imagePublicIds.map(publicId =>
+						cloudinary.uploader.destroy(publicId, { resource_type: 'image' }),
+					),
+				)
+
+				if (
+					imageDeleteResults.some(
+						result => result.result !== 'ok' && result.result !== 'not found',
+					)
+				) {
+					cb({ success: false, error: 'Failed to clear chat images' })
+					return
+				}
+
+				await db
+					.delete(message)
+					.where(eq(message.conversationId, conversationId))
+
+				await db
+					.update(conversation)
+					.set({ lastMessage: null, lastMessageAt: null })
+					.where(eq(conversation.id, conversationId))
+
+				await db.update(conversationUser).set({ unreadMessagesCount: 0 }).where(
+					and(
+						eq(conversationUser.conversationId, conversationId),
+						eq(conversationUser.userId, otherUserId),
+					),
+				)
+				await db.update(conversationUser).set({ unreadMessagesCount: 0 }).where(
+					and(
+						eq(conversationUser.conversationId, conversationId),
+						eq(conversationUser.userId, userId),
+					),
+				)
+
+				io.to(`chat:${conversationId}`).emit('chat:cleared', { conversationId })
+
+				cb({
+					success: true,
+				})
+			} catch (error) {
+				console.error('Failed to clear chat:', error)
+				cb({
+					success: false,
+					error: 'Failed to clear chat',
 				})
 			}
 		},

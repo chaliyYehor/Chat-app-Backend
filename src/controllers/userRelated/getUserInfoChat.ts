@@ -1,5 +1,10 @@
 import { and, eq, or } from 'drizzle-orm'
-import { conversation, user, userProfile } from '../../db/schemas/schema.js'
+import {
+	conversation,
+	user,
+	userPreferences,
+	userProfile,
+} from '../../db/schemas/schema.js'
 import { NextFunction, Request, Response } from 'express'
 import z from 'zod'
 import { BadRequestError } from '../../errors/badRequest.js'
@@ -64,8 +69,24 @@ export const getUserInfoChat = async (
 			return next(new BadRequestError('User account not found'))
 		}
 
-		return res.status(200).json({
+		const lastSeen = await db.query.userPreferences.findFirst({
+			where: eq(userPreferences.userId, otherUserId),
+			columns: {
+				lastSeen: true,
+			},
+		})
+
+		if (!lastSeen) {
+			return next(new BadRequestError('Last seen information not found'))
+		}
+
+		const finalUserInfo = {
 			...userInfo,
+			lastSeen: lastSeen.lastSeen ? userInfo.lastSeen : undefined,
+		}
+
+		return res.status(200).json({
+			...finalUserInfo,
 			email: userAccount.email,
 		})
 	} catch (error) {
