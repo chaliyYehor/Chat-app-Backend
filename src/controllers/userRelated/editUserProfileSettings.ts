@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express'
 import multer from 'multer'
-import { v2 as cloudinary } from 'cloudinary'
+import cloudinary from '../../lib/cloudinary.js'
 import fs from 'fs/promises'
 import { eq } from 'drizzle-orm'
 import { StatusCodes } from 'http-status-codes'
@@ -8,12 +8,6 @@ import { editUserProfileInfoSchema } from '../../schemas/editUserProfileInfo.js'
 import { BadRequestError } from '../../errors/badRequest.js'
 import { userProfile } from '../../db/schemas/schema.js'
 import { db } from '../../db/db.js'
-
-cloudinary.config({
-	cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-	api_key: process.env.CLOUDINARY_API_KEY,
-	api_secret: process.env.CLOUDINARY_API_SECRET,
-})
 
 export const upload = multer({ dest: 'uploads/' })
 
