@@ -3,7 +3,7 @@ import z from 'zod'
 import { BadRequestError } from '../../errors/badRequest.js'
 import { db } from '../../db/db.js'
 import { and, desc, eq, or } from 'drizzle-orm'
-import { conversation, message } from '../../db/schemas/schema.js'
+import { conversation, message, userPreferences } from '../../db/schemas/schema.js'
 import { UnauthorizedError } from '../../errors/unauthorized.js'
 
 export const getMessages = async (
@@ -37,11 +37,34 @@ export const getMessages = async (
 					eq(conversation.userTwoId, userId),
 				),
 			),
+			columns: {
+				userOneId: true,
+				userTwoId: true,
+			},
 		})
 
-		if(!checkIfUserIsInConversation) {
-			return next(new UnauthorizedError('User is not part of this conversation'))
+		if (!checkIfUserIsInConversation) {
+			return next(
+				new UnauthorizedError('User is not part of this conversation'),
+			)
 		}
+		let otherUserId
+
+		if (checkIfUserIsInConversation) {
+			otherUserId =
+				checkIfUserIsInConversation?.userOneId === userId
+					? checkIfUserIsInConversation.userTwoId
+					: checkIfUserIsInConversation?.userOneId
+		}
+		if (!otherUserId) {
+			return next(new UnauthorizedError('Failed to determine other user ID'))
+		}
+		const otherUserPreferences = await db.query.userPreferences.findFirst({
+			where: eq(userPreferences.userId, otherUserId),
+			columns: {
+				readReceipts: true,
+			},
+		})
 
 		const messagesWithExtra = await db.query.message.findMany({
 			where: eq(message.conversationId, conversationId),
@@ -53,8 +76,14 @@ export const getMessages = async (
 		const hasMore = messagesWithExtra.length > limit
 		const messages = messagesWithExtra.slice(0, limit)
 
+		const finalMessages = !otherUserPreferences?.readReceipts
+			? messages.map(msg =>
+					msg.senderId === userId ? { ...msg, read: undefined } : msg,
+				)
+			: messages
+
 		res.json({
-			messages,
+			messages: finalMessages,
 			hasMore,
 		})
 	} catch (error) {
