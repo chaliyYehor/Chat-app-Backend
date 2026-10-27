@@ -7,6 +7,7 @@ import VerificationEmail from '../emails/verification.js'
 import { userPreferences, userProfile } from '../db/schemas/schema.js'
 import { randomInt } from 'crypto'
 import { eq } from 'drizzle-orm'
+import cloudinary from './cloudinary.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -44,6 +45,17 @@ export const auth = betterAuth({
 			},
 			delete: {
 				before: async user => {
+					const userToDel = await db.query.userProfile.findFirst({
+						where: eq(userProfile.userId, user.id),
+						columns: {
+							imagePubId: true,
+						},
+					})
+
+					if (userToDel?.imagePubId) {
+						await cloudinary.uploader.destroy(userToDel.imagePubId)
+					}
+
 					await db.delete(userProfile).where(eq(userProfile.userId, user.id))
 					await db.delete(userPreferences).where(eq(userPreferences.userId, user.id))
 				}
