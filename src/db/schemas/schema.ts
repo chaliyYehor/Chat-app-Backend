@@ -163,7 +163,7 @@ export const conversation = pgTable(
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
 
-		lastMessage: text('last_message_id'),
+		lastMessage: text('last_message'),
 		lastMessageAt: timestamp('last_message_at', {
 			withTimezone: true,
 		}),
