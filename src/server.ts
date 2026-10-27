@@ -265,6 +265,32 @@ io.on('connection', async socket => {
 			}
 
 			try {
+				const chatImages = await db.query.message.findMany({
+					where: eq(message.conversationId, conversationId),
+					columns: {
+						imagePubId: true,
+					},
+				})
+
+				const imagePublicIds = chatImages
+					.map(chatMessage => chatMessage.imagePubId)
+					.filter((publicId): publicId is string => Boolean(publicId))
+
+				const imageDeleteResults = await Promise.all(
+					imagePublicIds.map(publicId =>
+						cloudinary.uploader.destroy(publicId, { resource_type: 'image' }),
+					),
+				)
+
+				if (
+					imageDeleteResults.some(
+						result => result.result !== 'ok' && result.result !== 'not found',
+					)
+				) {
+					cb({ success: false, error: 'Failed to delete chat images' })
+					return
+				}
+
 				await db.delete(conversation).where(eq(conversation.id, conversationId))
 
 				io.to(`chat:${conversationId}`).emit('chat:deleted')
