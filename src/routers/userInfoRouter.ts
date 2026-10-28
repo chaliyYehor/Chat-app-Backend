@@ -6,9 +6,11 @@ import { changeThemeHandler } from '../controllers/userRelated/changeTheme.js'
 import { editUserProfileSettings, upload } from '../controllers/userRelated/editUserProfileSettings.js'
 import { getUserInfoChat } from '../controllers/userRelated/getUserInfoChat.js'
 import { getChatInfo } from '../controllers/userRelated/getChatInfo.js'
+import { getSharedMedia } from '../controllers/userRelated/getSharedMedia.js'
 
 const router = express.Router()
 
+router.get('/getSharedMedia', getSharedMedia)
 router.get('/getUserInfo', getUserInfoHandler)
 router.get('/getUserPreferences', getUserPreferences)
 router.get('/getUserInfoChat', getUserInfoChat)
