@@ -22,7 +22,7 @@ import {
 	user,
 	userProfile,
 } from './db/schemas/schema.js'
-import { and, desc, eq, gt, gte, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gt, lt, or, sql } from 'drizzle-orm'
 import z from 'zod'
 import { BadRequestError } from './errors/badRequest.js'
 import { randomUUID } from 'crypto'
@@ -293,7 +293,7 @@ io.on('connection', async socket => {
 
 				await db.delete(conversation).where(eq(conversation.id, conversationId))
 
-				io.to(`chat:${conversationId}`).emit('chat:deleted')
+				io.to(`chat:${conversationId}`).emit('chat:deleted', { conversationId })
 				io.in(`chat:${conversationId}`).socketsLeave(`chat:${conversationId}`)
 
 				cb({
@@ -529,16 +529,23 @@ io.on('connection', async socket => {
 
 				const messageId = randomUUID()
 
-				await db.insert(message).values({
-					id: messageId,
-					conversationId: parsed.data.conversationId,
-					senderId: userId,
-					type: parsed.data.type,
-					text: parsed.data.text || null,
-					imageUrl: parsed.data.imageUrl || null,
-					imagePubId: parsed.data.imagePubId || null,
-					read: false,
-				})
+				const [newMessage] = await db
+					.insert(message)
+					.values({
+						id: messageId,
+						conversationId: parsed.data.conversationId,
+						senderId: userId,
+						type: parsed.data.type,
+						text: parsed.data.text || null,
+						imageUrl: parsed.data.imageUrl || null,
+						imagePubId: parsed.data.imagePubId || null,
+						read: false,
+					})
+					.returning()
+
+				if (!newMessage) {
+					throw new Error('Failed to create message')
+				}
 
 				await db
 					.update(conversation)
@@ -570,21 +577,10 @@ io.on('connection', async socket => {
 					},
 				)
 
-				if (parsed.data.lastMessageAt) {
-					const newMessages = await db.query.message.findMany({
-						where: and(
-							eq(message.conversationId, parsed.data.conversationId),
-							gte(message.createdAt, parsed.data.lastMessageAt),
-						),
-					})
-
-					if (newMessages) {
-						io.to(`chat:${parsed.data.conversationId}`).emit(
-							'message:new_messages',
-							newMessages,
-						)
-					}
-				}
+				io.to(`chat:${parsed.data.conversationId}`).emit(
+					'message:new_messages',
+					[newMessage],
+				)
 				cb({
 					success: true,
 				})
