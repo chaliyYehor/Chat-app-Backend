@@ -767,6 +767,14 @@ io.on('connection', async socket => {
 			}
 		},
 	)
+
+	socket.on('typing:start', ({ chatId }) => {
+		socket.to(`chat:${chatId}`).emit('typing:start', { chatId, userId: socket.data.id })
+	})
+
+	socket.on('typing:stop', ({ chatId }) => {
+		socket.to(`chat:${chatId}`).emit('typing:stop', { chatId, userId: socket.data.id })
+	})
 })
 app.use('/api/user', authenticationMiddleware, userInfoRouter)
 app.use('/api/chat', authenticationMiddleware, messagesRouter)
