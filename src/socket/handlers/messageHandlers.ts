@@ -103,6 +103,10 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 						messageId,
 					},
 				)
+				io.to(`user:${otherUserId}`).emit('notification:new_message', {
+					conversationId: parsed.data.conversationId,
+					messageId,
+				})
 
 				io.to(`chat:${parsed.data.conversationId}`).emit(
 					'message:new_messages',
