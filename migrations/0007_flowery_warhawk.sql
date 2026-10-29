@@ -1,0 +1,1 @@
+ALTER TABLE "conversation" RENAME COLUMN "last_message_id" TO "last_message";

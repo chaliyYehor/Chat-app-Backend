@@ -4,8 +4,10 @@ import { db } from '../db/db.js'
 import { Resend } from 'resend'
 import ResetPasswordEmail from '../emails/reset-password.js'
 import VerificationEmail from '../emails/verification.js'
-import { userProfile } from '../db/schemas/schema.js'
+import { userPreferences, userProfile } from '../db/schemas/schema.js'
 import { randomInt } from 'crypto'
+import { eq } from 'drizzle-orm'
+import cloudinary from './cloudinary.js'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -19,6 +21,12 @@ export const auth = betterAuth({
 		provider: 'pg',
 	}),
 
+	user: {
+		deleteUser: {
+			enabled: true
+		}
+	},
+
 	databaseHooks: {
 		user: {
 			create: {
@@ -27,8 +35,29 @@ export const auth = betterAuth({
 						userId: user.id,
 						userPubId: String(randomInt(1000, 100000)),
 						name: user.name,
-						status: 'online'
+						status: 'online',
+						previouslySetStatus: 'online',
 					})
+					await db.insert(userPreferences).values({
+						userId: user.id
+					})
+				},
+			},
+			delete: {
+				before: async user => {
+					const userToDel = await db.query.userProfile.findFirst({
+						where: eq(userProfile.userId, user.id),
+						columns: {
+							imagePubId: true,
+						},
+					})
+
+					if (userToDel?.imagePubId) {
+						await cloudinary.uploader.destroy(userToDel.imagePubId)
+					}
+
+					await db.delete(userProfile).where(eq(userProfile.userId, user.id))
+					await db.delete(userPreferences).where(eq(userPreferences.userId, user.id))
 				}
 			}
 		}

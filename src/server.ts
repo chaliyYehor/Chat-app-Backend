@@ -8,9 +8,27 @@ import { StatusCodes } from 'http-status-codes'
 import { Server } from 'socket.io'
 import './lib/jobs/health-check.js'
 import { errorMiddleware } from './middleware/errorHandlingMiddleware.js'
-import { toNodeHandler } from 'better-auth/node'
+import { fromNodeHeaders, toNodeHandler } from 'better-auth/node'
 import { auth } from './lib/auth.js'
 import userInfoRouter from './routers/userInfoRouter.js'
+import { authenticationMiddleware } from './middleware/authenticationMiddleware.js'
+import messagesRouter from './routers/messagesRouter.js'
+import { UnauthorizedError } from './errors/unauthorized.js'
+import { db } from './db/db.js'
+import {
+	conversation,
+	conversationUser,
+	message,
+	user,
+	userProfile,
+} from './db/schemas/schema.js'
+import { and, desc, eq, gt, lt, or, sql } from 'drizzle-orm'
+import z from 'zod'
+import { BadRequestError } from './errors/badRequest.js'
+import { randomUUID } from 'crypto'
+import { sendMessageSchema } from './schemas/sendMessage.js'
+import cloudinary from './lib/cloudinary.js'
+import { configureSocket } from './socket/index.js'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -43,7 +61,26 @@ app.use(xss())
 
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
-app.use('/api/user', userInfoRouter)
+io.use(async (socket, next) => {
+	try {
+		const session = await auth.api.getSession({
+			headers: fromNodeHeaders(socket.handshake.headers),
+		})
+
+		if (!session) return next(new UnauthorizedError('Unauthorized'))
+
+		socket.data.id = session.user.id
+		socket.data.user = session.user
+		next()
+	} catch (error) {
+		return next(new UnauthorizedError('Unauthorized'))
+	}
+})
+
+configureSocket(io)
+
+app.use('/api/user', authenticationMiddleware, userInfoRouter)
+app.use('/api/chat', authenticationMiddleware, messagesRouter)
 
 app.get('/health', (req, res) => {
 	res.status(StatusCodes.OK).send()

@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 import { NextFunction, Request, Response } from 'express'
-import { db } from '../db/db.js'
-import { userProfile } from '../db/schemas/schema.js'
+import { db } from '../../db/db.js'
+import { userProfile } from '../../db/schemas/schema.js'
 
 export const getUserInfoHandler = async (req: Request, res: Response, next: NextFunction) => {
 	const userId = req.session.user.id

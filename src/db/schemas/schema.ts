@@ -107,16 +107,27 @@ export const accountRelations = relations(account, ({ one }) => ({
 
 // application
 
-export const statusEnum = pgEnum('status', ['online', 'away', 'offline'])
+export const previouslySetStatusEnum = pgEnum('previously_set_status', [
+	'online',
+	'away',
+	'offline',
+])
+export const statusEnum = pgEnum('status', ['online', 'offline'])
+export const themeEnum = pgEnum('theme', ['light', 'dark'])
 
 export const userProfile = pgTable('user_profile', {
 	userId: text('user_id')
 		.references(() => user.id, { onDelete: 'cascade' })
 		.notNull(),
-	profilePicture: text('profile_picture'),
+	imageUrl: text('image_url'),
+	imagePubId: text('image_pub_id'),
 	about: text('about'),
 	name: text('name').notNull(),
+	theme: themeEnum('theme').default('dark').notNull(),
 	userPubId: text('user_pub_id').notNull().unique(),
+	previouslySetStatus: previouslySetStatusEnum('previously_set_status')
+		.default('online')
+		.notNull(),
 	status: statusEnum('status').default('offline').notNull(),
 	lastSeen: timestamp('last_seen', { withTimezone: true })
 		.defaultNow()
@@ -152,7 +163,7 @@ export const conversation = pgTable(
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
 
-		lastMessageId: text('last_message_id'),
+		lastMessage: text('last_message'),
 		lastMessageAt: timestamp('last_message_at', {
 			withTimezone: true,
 		}),
@@ -183,33 +194,56 @@ export const conversation = pgTable(
 )
 
 export const conversationUser = pgTable(
-    'conversation_user',
-    {
-        conversationId: text('conversation_id')
-            .notNull()
-            .references(() => conversation.id, { onDelete: 'cascade' }),
+	'conversation_user',
+	{
+		conversationId: text('conversation_id')
+			.notNull()
+			.references(() => conversation.id, { onDelete: 'cascade' }),
 
-        userId: text('user_id')
-            .notNull()
-            .references(() => user.id, { onDelete: 'cascade' }),
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
 
-        isPinned: boolean('is_pinned').default(false).notNull(),
+		isPinned: boolean('is_pinned').default(false).notNull(),
 
-        lastReadMessageId: text('last_read_message_id'),
+		lastReadMessageId: text('last_read_message_id'),
 
-				unreadMessagesCount: integer('unread_messages_count').default(0).notNull(),
+		unreadMessagesCount: integer('unread_messages_count').default(0).notNull(),
 
-        createdAt: timestamp('created_at', {
-            withTimezone: true,
-        })
-            .defaultNow()
-            .notNull(),
-    },
-    table => [
-        primaryKey({
-            columns: [table.conversationId, table.userId],
-        }),
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+	},
+	table => [
+		primaryKey({
+			columns: [table.conversationId, table.userId],
+		}),
 
-        index('conversation_user_user_id_idx').on(table.userId),
-    ],
+		index('conversation_user_user_id_idx').on(table.userId),
+	],
 )
+
+export const userPreferences = pgTable('user_preferences', {
+	userId: text('user_id')
+		.references(() => user.id, { onDelete: 'cascade' })
+		.notNull(),
+	typingSounds: boolean('typing_sounds').default(true),
+	messageSounds: boolean('message_sounds').default(true),
+	readReceipts: boolean('read_receipts').default(true),
+	lastSeen: boolean('last_seen').default(true),
+})
+
+export const messageTypeEnum = pgEnum('message_type', ['text_or_image', 'image'])
+export const message = pgTable('message', {
+	conversationId: text('conversation_id').references(() => conversation.id, { onDelete: 'cascade' }).notNull(),
+	id: text('id').primaryKey(),
+	senderId: text('sender_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
+	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+	read: boolean('read').default(false).notNull(),
+	type: messageTypeEnum('type').default('text_or_image').notNull(),
+	text: text('text'),
+	imageUrl: text('image_url'),
+	imagePubId: text('image_pub_id'),
+})
