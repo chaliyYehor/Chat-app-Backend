@@ -54,8 +54,6 @@ export const getGroupMembers = async (
 		})
 
 		res.status(200).json(profiles)
-
-		res.status(200).json(profiles)
 	} catch (error) {
 		return next(new BadRequestError('Failed to fetch group members'))
 	}
