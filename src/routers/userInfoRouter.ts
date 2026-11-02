@@ -7,6 +7,7 @@ import { editUserProfileSettings, upload } from '../controllers/userRelated/edit
 import { getUserInfoChat } from '../controllers/userRelated/getUserInfoChat.js'
 import { getChatInfo } from '../controllers/userRelated/getChatInfo.js'
 import { getSharedMedia } from '../controllers/userRelated/getSharedMedia.js'
+import { getGroupMembers } from '../controllers/groupRelated/getGroupMembers.js'
 
 const router = express.Router()
 
@@ -15,6 +16,7 @@ router.get('/getUserInfo', getUserInfoHandler)
 router.get('/getUserPreferences', getUserPreferences)
 router.get('/getUserInfoChat', getUserInfoChat)
 router.get('/getChatInfo', getChatInfo)
+router.get('/getGroupMembers', getGroupMembers)
 
 router.patch('/changeUserPreferences', changeUserPreferences)
 router.patch('/changeTheme', changeThemeHandler)
