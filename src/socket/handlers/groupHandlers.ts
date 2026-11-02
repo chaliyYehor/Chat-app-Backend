@@ -535,7 +535,7 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 					const imageDeleteResults = await Promise.all(
 						imagePublicIds.map(publicId =>
 							cloudinary.uploader.destroy(publicId, { resource_type: 'image' }),
-						), 
+						),
 					)
 					if (
 						imageDeleteResults.some(
@@ -606,6 +606,57 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 					success: false,
 					error: 'Failed to delete group',
 				})
+			}
+		},
+	)
+
+	socket.on(
+		'group:mark_as_read',
+		async (
+			data: { groupId: string },
+			cb: ({ success, error }: { success: boolean; error?: string }) => void,
+		) => {
+			if (!cb || typeof cb !== 'function') {
+				console.error('Callback function is not provided or is not a function')
+				return
+			}
+
+			const parsed = z
+				.object({ groupId: z.string().trim().min(1).max(100) })
+				.safeParse(data)
+
+			if (!parsed.success) {
+				cb({ success: false, error: 'Invalid Credentials' })
+				return
+			}
+
+			const userId = socket.data.id
+			const { groupId } = parsed.data
+
+			try {
+				const checkIfInGroup = await db.query.groupUser.findFirst({
+					where: and(
+						eq(groupUser.groupId, groupId),
+						eq(groupUser.userId, userId),
+					),
+				})
+
+				if (!checkIfInGroup) {
+					cb({ success: false, error: 'User is not a member of the group' })
+					return
+				}
+
+				await db
+					.update(groupUser)
+					.set({ unreadMessagesCount: 0 })
+					.where(
+						and(eq(groupUser.groupId, groupId), eq(groupUser.userId, userId)),
+					)
+
+				cb({ success: true })
+			} catch (error) {
+				console.error('Failed to mark group as read:', error)
+				cb({ success: false, error: 'Failed to mark group as read' })
 			}
 		},
 	)
