@@ -217,7 +217,7 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 
 				socket
 					.to(`group:${parsed.data.groupId}`)
-					.emit('notification:new_messages', {
+					.emit('notification:new_group_message', {
 						groupId: parsed.data.groupId,
 						messageId,
 					})
@@ -535,7 +535,7 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 					const imageDeleteResults = await Promise.all(
 						imagePublicIds.map(publicId =>
 							cloudinary.uploader.destroy(publicId, { resource_type: 'image' }),
-						),
+						), 
 					)
 					if (
 						imageDeleteResults.some(
