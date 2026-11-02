@@ -4,6 +4,8 @@ import { registerMessageHandlers } from './handlers/messageHandlers.js'
 import { registerTypingHandlers } from './handlers/typingHandlers.js'
 import { initialiseChatsConnection } from './services/chatsInitialisation.js'
 import { registerPresenceHandlers } from './services/presence.js'
+import { initialiseGroupsConnection } from './services/groupsInitialisation.js'
+import { registerGroupHandlers } from './handlers/groupHandlers.js'
 
 export function configureSocket(io: Server) {
 	io.on('connection', socket => {
@@ -13,8 +15,12 @@ export function configureSocket(io: Server) {
 		void initialiseChatsConnection(socket).catch(error => {
 			console.error('Error initializing socket chats:', error)
 		})
+		void initialiseGroupsConnection(socket).catch(error => {
+			console.error('Error initializing socket groups:', error)
+		})
 
 		registerChatHandlers(io, socket)
+		registerGroupHandlers(io, socket)
 		registerMessageHandlers(io, socket)
 		registerTypingHandlers(io, socket)
 	})

@@ -225,6 +225,75 @@ export const conversationUser = pgTable(
 	],
 )
 
+export const group = pgTable(
+	'group',
+	{
+		id: text('id').primaryKey(),
+
+		memberIds: text('member_ids').array().notNull().default([]),
+		groupName: text('group_name').notNull(),
+		groupDescription: text('group_description'),
+
+		lastMessage: text('last_message'),
+		lastMessageAt: timestamp('last_message_at', {
+			withTimezone: true,
+		}),
+
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+
+		updatedAt: timestamp('updated_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+	},
+	table => [
+		check('group_has_members', sql`cardinality(${table.memberIds}) >= 1`),
+
+		index('group_member_ids_idx').using('gin', table.memberIds),
+
+		index('group_last_message_at_idx').on(table.lastMessageAt),
+	],
+)
+
+export const roleEnum = pgEnum('role', ['admin', 'member'])
+
+export const groupUser = pgTable(
+	'group_user',
+	{
+		groupId: text('group_id')
+			.notNull()
+			.references(() => group.id, { onDelete: 'cascade' }),
+
+		userId: text('user_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'cascade' }),
+
+		role: roleEnum('role').default('member').notNull(),
+
+		lastReadMessageId: text('last_read_message_id'),
+
+		unreadMessagesCount: integer('unread_messages_count').default(0).notNull(),
+
+		createdAt: timestamp('created_at', {
+			withTimezone: true,
+		})
+			.defaultNow()
+			.notNull(),
+	},
+	table => [
+		primaryKey({
+			columns: [table.groupId, table.userId],
+		}),
+
+		index('group_user_user_id_idx').on(table.userId),
+	],
+)
+
 export const userPreferences = pgTable('user_preferences', {
 	userId: text('user_id')
 		.references(() => user.id, { onDelete: 'cascade' })
@@ -235,15 +304,39 @@ export const userPreferences = pgTable('user_preferences', {
 	lastSeen: boolean('last_seen').default(true),
 })
 
-export const messageTypeEnum = pgEnum('message_type', ['text_or_image', 'image'])
-export const message = pgTable('message', {
-	conversationId: text('conversation_id').references(() => conversation.id, { onDelete: 'cascade' }).notNull(),
-	id: text('id').primaryKey(),
-	senderId: text('sender_id').references(() => user.id, { onDelete: 'cascade' }).notNull(),
-	createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-	read: boolean('read').default(false).notNull(),
-	type: messageTypeEnum('type').default('text_or_image').notNull(),
-	text: text('text'),
-	imageUrl: text('image_url'),
-	imagePubId: text('image_pub_id'),
-})
+export const messageTypeEnum = pgEnum('message_type', [
+	'text_or_image',
+	'image',
+])
+export const message = pgTable(
+	'message',
+	{
+		conversationId: text('conversation_id').references(() => conversation.id, {
+			onDelete: 'cascade',
+		}),
+
+		groupId: text('group_id').references(() => group.id, {
+			onDelete: 'cascade',
+		}),
+
+		id: text('id').primaryKey(),
+		senderId: text('sender_id')
+			.references(() => user.id, { onDelete: 'cascade' })
+			.notNull(),
+		createdAt: timestamp('created_at', { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+		read: boolean('read').default(false).notNull(),
+		type: messageTypeEnum('type').default('text_or_image').notNull(),
+		text: text('text'),
+		imageUrl: text('image_url'),
+		imagePubId: text('image_pub_id'),
+	},
+	table => [
+		check(
+			'message_exactly_one_parent',
+			sql`(${table.conversationId} IS NOT NULL AND ${table.groupId} IS NULL)
+				OR (${table.conversationId} IS NULL AND ${table.groupId} IS NOT NULL)`,
+		),
+	],
+)

@@ -1,6 +1,6 @@
 import { Socket } from 'socket.io'
 import { Server } from 'socket.io'
-import { conversation, conversationUser, message } from '../../db/schemas/schema.js'
+import { conversation, conversationUser, group, message } from '../../db/schemas/schema.js'
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import { db } from '../../db/db.js'
 import z from 'zod'
@@ -207,6 +207,101 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 
 				io.to(`chat:${parsed.data.chatId}`).emit('message:deleted', {
 					conversationId: parsed.data.chatId,
+					messageId: messageData.id,
+				})
+
+				cb({ success: true })
+			} catch (error) {
+				console.error('Failed to delete message:', error)
+				cb({
+					success: false,
+					error: 'Failed to delete message',
+				})
+			}
+		},
+	)
+	socket.on(
+		'message:delete_group',
+		async (
+			data,
+			cb: ({ success, error }: { success: boolean; error?: string }) => void,
+		) => {
+			if (!cb || typeof cb !== 'function') {
+				console.error('Callback function is not provided or is not a function')
+				return
+			}
+
+			const parsed = z
+				.object({
+					groupId: z.string().trim().min(1),
+					messageId: z.string().trim().min(1),
+				})
+				.safeParse(data)
+
+			if (!parsed.success) {
+				cb({ success: false, error: 'Invalid data' })
+				return
+			}
+
+			const userId = socket.data.id
+
+			try {
+				const messageData = await db.query.message.findFirst({
+					where: and(
+						eq(message.id, parsed.data.messageId),
+						eq(message.groupId, parsed.data.groupId),
+						eq(message.senderId, userId),
+					),
+				})
+
+				if (!messageData) {
+					cb({
+						success: false,
+						error: 'Message not found or user is not the sender',
+					})
+					return
+				}
+
+				if (messageData.imagePubId) {
+					const cloudinaryResult = await cloudinary.uploader.destroy(
+						messageData.imagePubId,
+						{ resource_type: 'image' },
+					)
+
+					if (
+						cloudinaryResult.result !== 'ok' &&
+						cloudinaryResult.result !== 'not found'
+					) {
+						cb({ success: false, error: 'Failed to delete image' })
+						return
+					}
+				}
+
+				await db.delete(message).where(eq(message.id, messageData.id))
+
+				const lastMessageData = await db.query.message.findFirst({
+					where: eq(message.groupId, parsed.data.groupId),
+					orderBy: desc(message.createdAt),
+					columns: {
+						text: true,
+						type: true,
+						createdAt: true,
+					},
+				})
+
+				await db
+					.update(group)
+					.set({
+						lastMessage: lastMessageData
+							? (lastMessageData.text ??
+								(lastMessageData.type === 'image' ? 'Image' : null))
+							: null,
+						lastMessageAt: lastMessageData?.createdAt ?? null,
+					})
+					.where(eq(group.id, parsed.data.groupId))
+
+				io.to(`group:${parsed.data.groupId}`).emit('message:deleted_group', {
+					groupId: parsed.data.groupId,
 					messageId: messageData.id,
 				})
 
