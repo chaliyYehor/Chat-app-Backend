@@ -7,6 +7,7 @@ import { convertToUrl } from '../controllers/chatRelated/convertToUrl.js'
 import { deleteImage } from '../controllers/chatRelated/deleteImage.js'
 import { upload } from '../controllers/userRelated/editUserProfileSettings.js'
 import { getGroupMessages } from '../controllers/groupRelated/getGroupMessages.js'
+import { getCreator } from '../controllers/chatRelated/getCreator.js'
 
 const router = express.Router()
 
@@ -18,5 +19,6 @@ router.delete('/deleteImage', deleteImage)
 
 router.get('/getGroups', getGroups)
 router.get('/getGroupMessages', getGroupMessages)
+router.get('/getCreator', getCreator)
 
 export default router
