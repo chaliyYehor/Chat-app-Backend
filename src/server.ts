@@ -14,21 +14,8 @@ import userInfoRouter from './routers/userInfoRouter.js'
 import { authenticationMiddleware } from './middleware/authenticationMiddleware.js'
 import messagesRouter from './routers/messagesRouter.js'
 import { UnauthorizedError } from './errors/unauthorized.js'
-import { db } from './db/db.js'
-import {
-	conversation,
-	conversationUser,
-	message,
-	user,
-	userProfile,
-} from './db/schemas/schema.js'
-import { and, desc, eq, gt, lt, or, sql } from 'drizzle-orm'
-import z from 'zod'
-import { BadRequestError } from './errors/badRequest.js'
-import { randomUUID } from 'crypto'
-import { sendMessageSchema } from './schemas/sendMessage.js'
-import cloudinary from './lib/cloudinary.js'
 import { configureSocket } from './socket/index.js'
+import { AccessToken, LiveKitAPI } from 'livekit-server-sdk'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -38,6 +25,16 @@ const app = express()
 const server = http.createServer(app)
 
 const allowedOrigins = [CLIENT_URL, VERCEL_CLIENT_URL]
+
+const host = process.env.LIVEKIT_URL
+const apiKey = process.env.LIVEKIT_API_KEY
+const secret = process.env.LIVEKIT_API_SECRET
+
+new LiveKitAPI({
+	host,
+	apiKey,
+	secret,
+})
 
 const io = new Server(server, {
 	path: '/ws',
