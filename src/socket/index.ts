@@ -6,6 +6,7 @@ import { initialiseChatsConnection } from './services/chatsInitialisation.js'
 import { registerPresenceHandlers } from './services/presence.js'
 import { initialiseGroupsConnection } from './services/groupsInitialisation.js'
 import { registerGroupHandlers } from './handlers/groupHandlers.js'
+import { registerCallHandlers } from './handlers/callHandlers.js'
 
 export function configureSocket(io: Server) {
 	io.on('connection', socket => {
@@ -23,5 +24,6 @@ export function configureSocket(io: Server) {
 		registerGroupHandlers(io, socket)
 		registerMessageHandlers(io, socket)
 		registerTypingHandlers(io, socket)
+		registerCallHandlers(io, socket)
 	})
 }
