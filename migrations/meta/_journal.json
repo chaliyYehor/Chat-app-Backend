@@ -71,6 +71,13 @@
       "when": 1793483232238,
       "tag": "0009_glamorous_siren",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793483232239,
+      "tag": "0010_call_participants",
+      "breakpoints": true
     }
   ]
 }

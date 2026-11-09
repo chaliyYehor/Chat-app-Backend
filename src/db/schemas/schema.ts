@@ -8,6 +8,7 @@ import {
 	pgEnum,
 	date,
 	integer,
+	uniqueIndex,
 } from 'drizzle-orm/pg-core'
 
 import { check, primaryKey, unique } from 'drizzle-orm/pg-core'
@@ -339,4 +340,106 @@ export const message = pgTable(
 				OR (${table.conversationId} IS NULL AND ${table.groupId} IS NOT NULL)`,
 		),
 	],
+)
+
+export const callTypeEnum = pgEnum('call_type', ['audio', 'video'])
+export const callParticipantRoleEnum = pgEnum('call_participant_role', [
+	'initiator',
+	'participant',
+])
+export const callParticipantStatusEnum = pgEnum('call_participant_status', [
+	'outgoing',
+	'invited',
+	'accepted',
+	'declined',
+	'missed',
+	'joined',
+	'left',
+])
+
+export const call = pgTable(
+	'call',
+	{
+		id: text('id').primaryKey(),
+		conversationId: text('conversation_id').references(() => conversation.id, {
+			onDelete: 'cascade',
+		}),
+
+		groupId: text('group_id').references(() => group.id, {
+			onDelete: 'cascade',
+		}),
+
+		initiatorId: text('initiator_id')
+			.notNull()
+			.references(() => user.id, { onDelete: 'restrict' }),
+
+		callType: callTypeEnum('call_type').notNull(),
+		startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
+		endedAt: timestamp('ended_at', { withTimezone: true }),
+	},
+	table => [
+		check(
+			'call_exactly_one_parent',
+			sql`(${table.conversationId} IS NOT NULL AND ${table.groupId} IS NULL)
+				OR (${table.conversationId} IS NULL AND ${table.groupId} IS NOT NULL)`,
+		),
+		index('call_conversation_id_idx').on(table.conversationId),
+	uniqueIndex('call_active_group_unique')
+			.on(table.groupId)
+			.where(sql`${table.groupId} IS NOT NULL AND ${table.endedAt} IS NULL`),
+		index('call_group_id_idx').on(table.groupId),
+		index('call_initiator_id_idx').on(table.initiatorId),
+	],
+)
+
+export const callParticipant = pgTable(
+	'call_participant',
+	{
+		id: text('id').primaryKey(),
+		callId: text('call_id')
+			.notNull()
+			.references(() => call.id, { onDelete: 'cascade' }),
+		userId: text('user_id').references(() => user.id, { onDelete: 'set null' }),
+		name: text('name').notNull(),
+		imageUrl: text('image_url'),
+		role: callParticipantRoleEnum('role').notNull(),
+		status: callParticipantStatusEnum('status').notNull(),
+		joinedAt: timestamp('joined_at', { withTimezone: true }),
+		leftAt: timestamp('left_at', { withTimezone: true }),
+	},
+	table => [
+		unique('call_participant_user_unique').on(table.callId, table.userId),
+		index('call_participant_call_id_idx').on(table.callId),
+		index('call_participant_user_id_idx').on(table.userId),
+	],
+)
+
+export const callRelations = relations(call, ({ one, many }) => ({
+	conversation: one(conversation, {
+		fields: [call.conversationId],
+		references: [conversation.id],
+	}),
+	group: one(group, {
+		fields: [call.groupId],
+		references: [group.id],
+	}),
+	initiator: one(user, {
+		fields: [call.initiatorId],
+		references: [user.id],
+	}),
+	participants: many(callParticipant),
+}))
+
+export const callParticipantRelations = relations(
+	callParticipant,
+	({ one }) => ({
+		call: one(call, {
+			fields: [callParticipant.callId],
+			references: [call.id],
+		}),
+		user: one(user, {
+			fields: [callParticipant.userId],
+			references: [user.id],
+		}),
+	}),
 )
