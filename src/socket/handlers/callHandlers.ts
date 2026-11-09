@@ -24,6 +24,7 @@ const roomService =
 type CallParticipantProfile = { name: string; imageUrl: string | null }
 
 async function saveDirectCall({
+	io,
 	callId,
 	conversationId,
 	initiatorId,
@@ -34,6 +35,7 @@ async function saveDirectCall({
 	startedAt,
 	result,
 }: {
+	io: Server
 	callId: string
 	conversationId: string
 	initiatorId: string
@@ -79,6 +81,7 @@ async function saveDirectCall({
 			},
 		])
 	})
+	io.to(`user:${initiatorId}`).to(`user:${recipientId}`).emit('call:history:updated')
 }
 
 async function ensureGroupCallParticipant({
@@ -544,6 +547,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 
 				if (!recipientSocket) {
 					await saveDirectCall({
+						io,
 						callId,
 						conversationId,
 						initiatorId: userId,
@@ -582,7 +586,11 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 										| { status?: string }
 										| undefined
 									resolve(
-										response?.status === 'accepted' ? 'accepted' : 'rejected',
+										response?.status === 'accepted'
+											? 'accepted'
+											: response?.status === 'timeout'
+												? 'timeout'
+												: 'rejected',
 									)
 								},
 							)
@@ -591,6 +599,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 
 				if (decision !== 'accepted') {
 					await saveDirectCall({
+						io,
 						callId,
 						conversationId,
 						initiatorId: userId,
@@ -647,6 +656,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 						: callRoom.creationTime * 1000n,
 				)
 				await saveDirectCall({
+					io,
 					callId,
 					conversationId,
 					initiatorId: userId,
@@ -796,6 +806,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 
 				if (!recipientSocket) {
 					await saveDirectCall({
+						io,
 						callId,
 						conversationId,
 						initiatorId: userId,
@@ -834,7 +845,11 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 										| { status?: string }
 										| undefined
 									resolve(
-										response?.status === 'accepted' ? 'accepted' : 'rejected',
+										response?.status === 'accepted'
+											? 'accepted'
+											: response?.status === 'timeout'
+												? 'timeout'
+												: 'rejected',
 									)
 								},
 							)
@@ -843,6 +858,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 
 				if (decision !== 'accepted') {
 					await saveDirectCall({
+						io,
 						callId,
 						conversationId,
 						initiatorId: userId,
@@ -897,6 +913,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 						: callRoom.creationTime * 1000n,
 				)
 				await saveDirectCall({
+					io,
 					callId,
 					conversationId,
 					initiatorId: userId,
