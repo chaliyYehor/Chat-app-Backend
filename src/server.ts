@@ -15,7 +15,8 @@ import { authenticationMiddleware } from './middleware/authenticationMiddleware.
 import messagesRouter from './routers/messagesRouter.js'
 import { UnauthorizedError } from './errors/unauthorized.js'
 import { configureSocket } from './socket/index.js'
-import { AccessToken, LiveKitAPI } from 'livekit-server-sdk'
+import { LiveKitAPI } from 'livekit-server-sdk'
+import callsRouter from './routers/callsRouter.js'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -78,6 +79,7 @@ configureSocket(io)
 
 app.use('/api/user', authenticationMiddleware, userInfoRouter)
 app.use('/api/chat', authenticationMiddleware, messagesRouter)
+app.use('/api/calls', authenticationMiddleware, callsRouter)
 
 app.get('/health', (req, res) => {
 	res.status(StatusCodes.OK).send()
