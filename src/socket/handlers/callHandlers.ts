@@ -21,6 +21,8 @@ const roomService =
 		? new RoomServiceClient(livekitHost, apiKey, secret)
 		: null
 
+const pendingDirectCalls = new Map<string, { cancel: () => void }>()
+
 type CallParticipantProfile = { name: string; imageUrl: string | null }
 
 async function saveDirectCall({
@@ -140,6 +142,12 @@ async function ensureGroupCallParticipant({
 }
 
 export function registerCallHandlers(io: Server, socket: Socket) {
+	socket.on('call:cancel', (data: unknown) => {
+		const parsed = z.object({ requestId: z.string().uuid() }).safeParse(data)
+		if (!parsed.success || !socket.data.id) return
+		pendingDirectCalls.get(parsed.data.requestId)?.cancel()
+	})
+
 	socket.on('call:leave', async (data, cb?: (response: { success: boolean }) => void) => {
 		const parsed = z.object({
 			callId: z.string().trim().min(1).max(100),
@@ -473,6 +481,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 				.object({
 					userId: z.string().trim().min(1).max(100),
 					conversationId: z.string().trim().min(1).max(100),
+					requestId: z.string().uuid(),
 				})
 				.safeParse(data)
 
@@ -484,7 +493,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 				return
 			}
 
-			const { userId, conversationId } = parsed.data
+			const { userId, conversationId, requestId } = parsed.data
 
 			if (!apiKey || !secret || !roomService) {
 				console.error('LiveKit API credentials are not configured')
@@ -562,8 +571,10 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 					return
 				}
 
-				const decision = await new Promise<'accepted' | 'rejected' | 'timeout'>(
+				const decision = await new Promise<'accepted' | 'rejected' | 'timeout' | 'cancelled'>(
 					resolve => {
+						const cancel = () => resolve('cancelled')
+						pendingDirectCalls.set(requestId, { cancel })
 						io.to(recipientSocket.id)
 							.timeout(30_000)
 							.emit(
@@ -596,6 +607,11 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 							)
 					},
 				)
+				pendingDirectCalls.delete(requestId)
+
+				if (decision === 'cancelled') {
+					io.to(`user:${recipientId}`).emit('call:cancelled', { callId, conversationId })
+				}
 
 				if (decision !== 'accepted') {
 					await saveDirectCall({
@@ -608,7 +624,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 						recipient: recipientProfile,
 						callType: 'audio',
 						startedAt: inviteStartedAt,
-						result: decision === 'timeout' ? 'missed' : 'declined',
+						result: decision === 'timeout' || decision === 'cancelled' ? 'missed' : 'declined',
 					})
 					const error =
 						decision === 'timeout'
@@ -732,6 +748,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 				.object({
 					userId: z.string().trim().min(1).max(100),
 					conversationId: z.string().trim().min(1).max(100),
+					requestId: z.string().uuid(),
 				})
 				.safeParse(data)
 
@@ -743,7 +760,7 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 				return
 			}
 
-			const { userId, conversationId } = parsed.data
+			const { userId, conversationId, requestId } = parsed.data
 
 			if (!apiKey || !secret || !roomService) {
 				console.error('LiveKit API credentials are not configured')
@@ -821,8 +838,10 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 					return
 				}
 
-				const decision = await new Promise<'accepted' | 'rejected' | 'timeout'>(
+				const decision = await new Promise<'accepted' | 'rejected' | 'timeout' | 'cancelled'>(
 					resolve => {
+						const cancel = () => resolve('cancelled')
+						pendingDirectCalls.set(requestId, { cancel })
 						io.to(recipientSocket.id)
 							.timeout(30_000)
 							.emit(
@@ -855,6 +874,11 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 							)
 					},
 				)
+				pendingDirectCalls.delete(requestId)
+
+				if (decision === 'cancelled') {
+					io.to(`user:${recipientId}`).emit('call:cancelled', { callId, conversationId })
+				}
 
 				if (decision !== 'accepted') {
 					await saveDirectCall({
@@ -867,12 +891,12 @@ export function registerCallHandlers(io: Server, socket: Socket) {
 						recipient: recipientProfile,
 						callType: 'video',
 						startedAt: inviteStartedAt,
-						result: decision === 'timeout' ? 'missed' : 'declined',
+						result: decision === 'timeout' || decision === 'cancelled' ? 'missed' : 'declined',
 					})
 					cb({
 						success: false,
 						error:
-							decision === 'timeout'
+							decision === 'timeout' || decision === 'cancelled'
 								? 'The user did not answer the call.'
 								: 'The user declined the call.',
 					})
