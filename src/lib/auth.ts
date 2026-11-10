@@ -23,8 +23,12 @@ export const auth = betterAuth({
 
 	user: {
 		deleteUser: {
-			enabled: true
-		}
+			enabled: true,
+		},
+	},
+
+	session: {
+		freshAge: 0,
 	},
 
 	databaseHooks: {
@@ -39,7 +43,7 @@ export const auth = betterAuth({
 						previouslySetStatus: 'online',
 					})
 					await db.insert(userPreferences).values({
-						userId: user.id
+						userId: user.id,
 					})
 				},
 			},
@@ -57,10 +61,12 @@ export const auth = betterAuth({
 					}
 
 					await db.delete(userProfile).where(eq(userProfile.userId, user.id))
-					await db.delete(userPreferences).where(eq(userPreferences.userId, user.id))
-				}
-			}
-		}
+					await db
+						.delete(userPreferences)
+						.where(eq(userPreferences.userId, user.id))
+				},
+			},
+		},
 	},
 
 	trustedOrigins: allowedOrigins,
