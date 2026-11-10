@@ -7,17 +7,11 @@ info:
     configured email/password, GitHub, and Google sign-in methods. Its individual
     routes are intentionally not enumerated here. Realtime Socket.IO events are
     outside this OpenAPI document. LiveKit call credentials are issued through
-    Socket.IO events; the backend has no HTTP token-issuing endpoint.
+    Socket.IO events; the backend has no HTTP token-issuing endpoint. Protected
+    endpoints require a session cookie obtained by signing in through the app.
 servers:
-  - url: '{scheme}://{host}'
-    description: Backend server
-    variables:
-      scheme:
-        default: http
-        enum: [http, https]
-      host:
-        default: localhost:5000
-        description: Backend host and optional port
+  - url: /
+    description: This server
 tags:
   - name: Health
   - name: User
