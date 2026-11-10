@@ -188,27 +188,28 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 					lastSeen: lastSeenVisible ? profileLastSeen : undefined,
 				}
 
-				await db
-					.update(group)
-					.set({
-						lastMessage:
-							parsed.data.text ??
-							(parsed.data.type === 'image' ? 'Image' : null),
-						lastMessageAt: new Date(),
-					})
-					.where(eq(group.id, parsed.data.groupId))
-
-				await db
-					.update(groupUser)
-					.set({
-						unreadMessagesCount: sql`${groupUser.unreadMessagesCount} + 1`,
-					})
-					.where(
-						and(
-							eq(groupUser.groupId, parsed.data.groupId),
-							ne(groupUser.userId, userId),
+				await Promise.all([
+					db
+						.update(group)
+						.set({
+							lastMessage:
+								parsed.data.text ??
+								(parsed.data.type === 'image' ? 'Image' : null),
+							lastMessageAt: new Date(),
+						})
+						.where(eq(group.id, parsed.data.groupId)),
+					db
+						.update(groupUser)
+						.set({
+							unreadMessagesCount: sql`${groupUser.unreadMessagesCount} + 1`,
+						})
+						.where(
+							and(
+								eq(groupUser.groupId, parsed.data.groupId),
+								ne(groupUser.userId, userId),
+							),
 						),
-					)
+				])
 
 				io.to(`group:${parsed.data.groupId}`).emit('group:message:received', {
 					groupId: parsed.data.groupId,
