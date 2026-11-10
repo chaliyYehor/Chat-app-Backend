@@ -74,27 +74,28 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 					throw new Error('Failed to create message')
 				}
 
-				await db
-					.update(conversation)
-					.set({
-						lastMessage:
-							parsed.data.text ??
-							(parsed.data.type === 'image' ? 'Image' : null),
-						lastMessageAt: new Date(),
-					})
-					.where(eq(conversation.id, parsed.data.conversationId))
-
-				await db
-					.update(conversationUser)
-					.set({
-						unreadMessagesCount: sql`${conversationUser.unreadMessagesCount} + 1`,
-					})
-					.where(
-						and(
-							eq(conversationUser.conversationId, parsed.data.conversationId),
-							eq(conversationUser.userId, otherUserId),
+				await Promise.all([
+					db
+						.update(conversation)
+						.set({
+							lastMessage:
+								parsed.data.text ??
+								(parsed.data.type === 'image' ? 'Image' : null),
+							lastMessageAt: new Date(),
+						})
+						.where(eq(conversation.id, parsed.data.conversationId)),
+					db
+						.update(conversationUser)
+						.set({
+							unreadMessagesCount: sql`${conversationUser.unreadMessagesCount} + 1`,
+						})
+						.where(
+							and(
+								eq(conversationUser.conversationId, parsed.data.conversationId),
+								eq(conversationUser.userId, otherUserId),
+							),
 						),
-					)
+				])
 
 				io.to([`user:${otherUserId}`, `user:${userId}`]).emit(
 					'message:received',
