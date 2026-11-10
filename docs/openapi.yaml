@@ -1,0 +1,717 @@
+openapi: 3.0.3
+info:
+  title: Pulse API
+  version: 1.0.0
+  description: >-
+    HTTP API for Pulse. Better Auth handles authentication under /api/auth with
+    configured email/password, GitHub, and Google sign-in methods. Its individual
+    routes are intentionally not enumerated here. Realtime Socket.IO events are
+    outside this OpenAPI document. LiveKit call credentials are issued through
+    Socket.IO events; the backend has no HTTP token-issuing endpoint.
+servers:
+  - url: '{scheme}://{host}'
+    description: Backend server
+    variables:
+      scheme:
+        default: http
+        enum: [http, https]
+      host:
+        default: localhost:5000
+        description: Backend host and optional port
+tags:
+  - name: Health
+  - name: User
+  - name: Chat
+  - name: Groups
+  - name: Calls
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Check backend health
+      security: []
+      responses:
+        '200':
+          description: Backend is available
+
+  /api/user/getSharedMedia:
+    get:
+      tags: [User]
+      summary: List images shared in a conversation or group
+      description: Exactly one of chatId and groupId is required.
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: chatId
+          schema: { type: string, minLength: 1 }
+        - in: query
+          name: groupId
+          schema: { type: string, minLength: 1 }
+        - in: query
+          name: otherUserId
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Shared media, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SharedMediaItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/user/getUserInfo:
+    get:
+      tags: [User]
+      summary: Get the current user's profile
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Profile record, or null if no profile exists
+          content:
+            application/json:
+              schema:
+                type: object
+                nullable: true
+                allOf:
+                  - { $ref: '#/components/schemas/UserProfile' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/user/getUserPreferences:
+    get:
+      tags: [User]
+      summary: Get the current user's preferences
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Preferences record, or null if none exists
+          content:
+            application/json:
+              schema:
+                type: object
+                nullable: true
+                allOf:
+                  - { $ref: '#/components/schemas/UserPreferences' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/user/getUserInfoChat:
+    get:
+      tags: [User]
+      summary: Get the other participant's profile in a conversation
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: conversationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Other participant profile and email
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatUserProfile' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/user/getChatInfo:
+    get:
+      tags: [User]
+      summary: Get conversation and current-user conversation settings
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: conversationId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Conversation data and the current user's conversation data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChatInfo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/user/getGroupMembers:
+    get:
+      tags: [Groups]
+      summary: List members of a group
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: groupId
+          required: true
+          schema: { type: string, minLength: 1 }
+      responses:
+        '200':
+          description: Group members, with admins first
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/GroupMember' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/user/changeUserPreferences:
+    patch:
+      tags: [User]
+      summary: Change one user preference
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePreferenceRequest' }
+      responses:
+        '201':
+          description: Preference updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/user/changeTheme:
+    patch:
+      tags: [User]
+      summary: Change the current user's theme
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangeThemeRequest' }
+      responses:
+        '200':
+          description: Theme updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MessageResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/user/editUserProfileInfo:
+    patch:
+      tags: [User]
+      summary: Update profile fields and optionally upload an image
+      description: >-
+        The profile fields follow editUserProfileInfoSchema. The email and
+        userId fields are accepted by validation but are not applied by this
+        handler. An uploaded file must have an image media type and be at most
+        5 MiB.
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              allOf:
+                - { $ref: '#/components/schemas/EditProfileRequest' }
+                - type: object
+                  properties:
+                    file:
+                      type: string
+                      format: binary
+                      description: Optional image file, maximum 5 MiB
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [msg]
+                properties:
+                  msg: { type: string, enum: [success] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/chat/searchPerson:
+    get:
+      tags: [Chat]
+      summary: Search for people by name
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: search
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Matching users, excluding the current user
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PersonSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/chat/getChats:
+    get:
+      tags: [Chat]
+      summary: List the current user's conversations
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Conversations and participant profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ChatListItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/chat/getMessages:
+    get:
+      tags: [Chat]
+      summary: Get a page of direct conversation messages
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: conversationId
+          required: true
+          schema: { type: string, minLength: 1 }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Messages and pagination state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedMessages' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401':
+          description: Unauthenticated or not a member of the conversation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/chat/convertToUrl:
+    post:
+      tags: [Chat]
+      summary: Upload a message image
+      security:
+        - sessionCookie: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Optional image file, maximum 5 MiB
+      responses:
+        '200':
+          description: Uploaded image URL and provider public ID; empty strings if no file was sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UploadedImage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/chat/deleteImage:
+    delete:
+      tags: [Chat]
+      summary: Delete an uploaded message image owned by the current user
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeleteImageRequest' }
+      responses:
+        '200':
+          description: Image deleted or already absent
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [success]
+                properties:
+                  success: { type: boolean, enum: [true] }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/chat/getGroups:
+    get:
+      tags: [Groups]
+      summary: List groups joined by the current user
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Groups and current-user membership records
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GroupsResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/chat/getGroupMessages:
+    get:
+      tags: [Groups]
+      summary: Get a page of group messages
+      security:
+        - sessionCookie: []
+      parameters:
+        - in: query
+          name: groupId
+          required: true
+          schema: { type: string, minLength: 1 }
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 1, default: 1 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Messages and pagination state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaginatedGroupMessages' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/chat/getCreator:
+    get:
+      tags: [User]
+      summary: Get the configured creator profile
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Creator account and profile summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PersonSummaryWithEmail' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /api/calls/previous:
+    get:
+      tags: [Calls]
+      summary: List the current user's call history
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Calls with current-user status and participant records
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CallHistoryItem' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: better-auth.session_token
+      description: >-
+        Better Auth session cookie. HTTPS deployments may add the __Secure-
+        prefix according to Better Auth cookie settings.
+  responses:
+    BadRequest:
+      description: Invalid input or request could not be completed
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthenticated:
+      description: Missing or invalid session cookie
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [msg]
+      properties:
+        msg: { type: string }
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    DateTime:
+      type: string
+      format: date-time
+    SharedMediaItem:
+      type: object
+      required: [id, imageUrl]
+      properties:
+        id: { type: string }
+        imageUrl: { type: string, format: uri }
+    UserProfile:
+      type: object
+      properties:
+        userId: { type: string }
+        imageUrl: { type: string, nullable: true }
+        imagePubId: { type: string, nullable: true }
+        about: { type: string, nullable: true }
+        name: { type: string }
+        theme: { type: string, enum: [light, dark] }
+        userPubId: { type: string }
+        previouslySetStatus: { type: string, enum: [online, away, offline] }
+        status: { type: string, enum: [online, offline] }
+        lastSeen: { $ref: '#/components/schemas/DateTime' }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+        updatedAt: { $ref: '#/components/schemas/DateTime' }
+    UserPreferences:
+      type: object
+      properties:
+        userId: { type: string }
+        typingSounds: { type: boolean, nullable: true }
+        messageSounds: { type: boolean, nullable: true }
+        readReceipts: { type: boolean, nullable: true }
+        lastSeen: { type: boolean, nullable: true }
+    ChatUserProfile:
+      type: object
+      properties:
+        userId: { type: string }
+        email: { type: string, format: email }
+        name: { type: string }
+        imageUrl: { type: string, nullable: true }
+        about: { type: string, nullable: true }
+        userPubId: { type: string }
+        status: { type: string, enum: [online, offline] }
+        previouslySetStatus: { type: string, enum: [online, away, offline] }
+        lastSeen: { $ref: '#/components/schemas/DateTime' }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+        updatedAt: { $ref: '#/components/schemas/DateTime' }
+    Conversation:
+      type: object
+      properties:
+        id: { type: string }
+        userOneId: { type: string }
+        userTwoId: { type: string }
+        lastMessage: { type: string, nullable: true }
+        lastMessageAt: { type: string, format: date-time, nullable: true }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+        updatedAt: { $ref: '#/components/schemas/DateTime' }
+    ConversationUser:
+      type: object
+      properties:
+        conversationId: { type: string }
+        userId: { type: string }
+        isPinned: { type: boolean }
+        lastReadMessageId: { type: string, nullable: true }
+        unreadMessagesCount: { type: integer }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+    ChatInfo:
+      type: object
+      required: [conversationData, conversationUserData]
+      properties:
+        conversationData: { $ref: '#/components/schemas/Conversation' }
+        conversationUserData: { $ref: '#/components/schemas/ConversationUser' }
+    GroupMember:
+      type: object
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        imageUrl: { type: string, nullable: true }
+        about: { type: string, nullable: true }
+        theme: { type: string, enum: [light, dark] }
+        status: { type: string, enum: [online, offline] }
+        previouslySetStatus: { type: string, enum: [online, away, offline] }
+        lastSeen: { $ref: '#/components/schemas/DateTime' }
+        role: { type: string, enum: [admin, member] }
+    ChangePreferenceRequest:
+      type: object
+      required: [type, value]
+      properties:
+        type:
+          type: string
+          enum: [typingSounds, messageSounds, lastSeen, readReceipts]
+        value: { type: boolean }
+    ChangeThemeRequest:
+      type: object
+      required: [theme]
+      properties:
+        theme: { type: string, enum: [dark, light] }
+    EditProfileRequest:
+      type: object
+      description: At least one property must be provided.
+      properties:
+        previouslySetStatus: { type: string, enum: [online, away, offline] }
+        userId: { type: string }
+        name: { type: string, minLength: 1, maxLength: 30 }
+        bio: { type: string, maxLength: 160 }
+        email: { type: string, format: email }
+    PersonSummary:
+      type: object
+      properties:
+        userId: { type: string }
+        name: { type: string }
+        imageUrl: { type: string, nullable: true }
+        status: { type: string, enum: [online, offline] }
+        previouslySetStatus: { type: string, enum: [online, away, offline] }
+    PersonSummaryWithEmail:
+      allOf:
+        - { $ref: '#/components/schemas/PersonSummary' }
+        - type: object
+          properties:
+            email: { type: string, format: email }
+    ChatListItem:
+      type: object
+      properties:
+        conversation: { $ref: '#/components/schemas/Conversation' }
+        conversationUser: { $ref: '#/components/schemas/ConversationUser' }
+        userOne: { $ref: '#/components/schemas/PersonSummary' }
+        userTwo: { $ref: '#/components/schemas/PersonSummary' }
+    Message:
+      type: object
+      properties:
+        id: { type: string }
+        conversationId: { type: string, nullable: true }
+        groupId: { type: string, nullable: true }
+        senderId: { type: string }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+        read: { type: boolean, nullable: true }
+        type: { type: string, enum: [text_or_image, image] }
+        text: { type: string, nullable: true }
+        imageUrl: { type: string, nullable: true }
+        imagePubId: { type: string, nullable: true }
+    PaginatedMessages:
+      type: object
+      required: [messages, hasMore]
+      properties:
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/Message' }
+        hasMore: { type: boolean }
+    UploadedImage:
+      type: object
+      required: [imageUrl, imagePublicId]
+      properties:
+        imageUrl: { type: string }
+        imagePublicId: { type: string }
+    DeleteImageRequest:
+      type: object
+      required: [publicId]
+      properties:
+        publicId: { type: string, minLength: 1 }
+    Group:
+      type: object
+      properties:
+        id: { type: string }
+        memberIds:
+          type: array
+          items: { type: string }
+        groupName: { type: string }
+        groupDescription: { type: string, nullable: true }
+        lastMessage: { type: string, nullable: true }
+        lastMessageAt: { type: string, format: date-time, nullable: true }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+        updatedAt: { $ref: '#/components/schemas/DateTime' }
+    GroupMembership:
+      type: object
+      properties:
+        groupId: { type: string }
+        userId: { type: string }
+        role: { type: string, enum: [admin, member] }
+        lastReadMessageId: { type: string, nullable: true }
+        unreadMessagesCount: { type: integer }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+    GroupWithMembership:
+      type: object
+      properties:
+        group: { $ref: '#/components/schemas/Group' }
+        groupUser: { $ref: '#/components/schemas/GroupMembership' }
+    GroupsResponse:
+      type: object
+      required: [groups]
+      properties:
+        groups:
+          type: array
+          items: { $ref: '#/components/schemas/GroupWithMembership' }
+    GroupMessage:
+      allOf:
+        - { $ref: '#/components/schemas/Message' }
+        - type: object
+          properties:
+            senderInfo:
+              $ref: '#/components/schemas/ChatUserProfile'
+    PaginatedGroupMessages:
+      type: object
+      required: [messages, hasMore]
+      properties:
+        messages:
+          type: array
+          items: { $ref: '#/components/schemas/GroupMessage' }
+        hasMore: { type: boolean }
+    CallParticipant:
+      type: object
+      properties:
+        callId: { type: string }
+        userId: { type: string, nullable: true }
+        name: { type: string }
+        imageUrl: { type: string, nullable: true }
+        role: { type: string, enum: [initiator, participant] }
+        status: { type: string, enum: [outgoing, invited, accepted, declined, missed, joined, left] }
+        joinedAt: { type: string, format: date-time, nullable: true }
+        leftAt: { type: string, format: date-time, nullable: true }
+    CallHistoryItem:
+      type: object
+      properties:
+        id: { type: string }
+        conversationId: { type: string, nullable: true }
+        groupId: { type: string, nullable: true }
+        initiatorId: { type: string }
+        callType: { type: string, enum: [audio, video] }
+        startedAt: { $ref: '#/components/schemas/DateTime' }
+        endedAt: { type: string, format: date-time, nullable: true }
+        group:
+          type: object
+          nullable: true
+          properties:
+            id: { type: string }
+            name: { type: string }
+        currentUser: { $ref: '#/components/schemas/CallParticipant' }
+        participants:
+          type: array
+          items: { $ref: '#/components/schemas/CallParticipant' }

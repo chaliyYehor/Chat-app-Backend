@@ -7,10 +7,12 @@ import { registerPresenceHandlers } from './services/presence.js'
 import { initialiseGroupsConnection } from './services/groupsInitialisation.js'
 import { registerGroupHandlers } from './handlers/groupHandlers.js'
 import { registerCallHandlers } from './handlers/callHandlers.js'
+import { registerSocketRateLimit } from './socketRateLimit.js'
 
 export function configureSocket(io: Server) {
 	io.on('connection', socket => {
 		console.log(`User ${socket.data.id} connected`)
+		registerSocketRateLimit(socket)
 
 		registerPresenceHandlers(io, socket)
 		void initialiseChatsConnection(socket).catch(error => {
