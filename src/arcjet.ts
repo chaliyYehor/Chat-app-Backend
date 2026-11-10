@@ -16,7 +16,7 @@ export const httpArcjet = arcjetKey
 					mode: 'LIVE',
 					allow: ['CATEGORY:SEARCH_ENGINE', 'CATEGORY:PREVIEW'],
 				}),
-				slidingWindow({ mode: 'LIVE', interval: '20s', max: 30 }),
+				slidingWindow({ mode: 'LIVE', interval: '20s', max: 90 }),
 			],
 		})
 	: null
@@ -30,7 +30,7 @@ export const wsArcjet = arcjetKey
 					mode: 'LIVE',
 					allow: ['CATEGORY:SEARCH_ENGINE', 'CATEGORY:PREVIEW'],
 				}),
-				slidingWindow({ mode: 'LIVE', interval: '2s', max: 8 }),
+				slidingWindow({ mode: 'LIVE', interval: '2s', max: 16 }),
 			],
 		})
 	: null

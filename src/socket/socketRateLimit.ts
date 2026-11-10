@@ -4,21 +4,21 @@ type RateLimit = { max: number; windowMs: number }
 type RateWindow = { timestamps: number[]; lastSeen: number }
 type UserRateState = { lastSeen: number; windows: Map<string, RateWindow> }
 
-const DEFAULT_LIMIT: RateLimit = { max: 150, windowMs: 10_000 }
+const DEFAULT_LIMIT: RateLimit = { max: 300, windowMs: 10_000 }
 const EVENT_LIMITS: Record<string, RateLimit> = {
-	'message:send': { max: 15, windowMs: 10_000 },
-	'group:message:send': { max: 15, windowMs: 10_000 },
-	'chat:create-chat': { max: 5, windowMs: 60_000 },
-	'group:create-group': { max: 5, windowMs: 60_000 },
-	'audio_call:join': { max: 5, windowMs: 30_000 },
-	'video_call:join': { max: 5, windowMs: 30_000 },
-	'group_call:join': { max: 5, windowMs: 30_000 },
-	'group_video_call:join': { max: 5, windowMs: 30_000 },
-	'chat:delete-chat': { max: 10, windowMs: 10_000 },
-	'chat:clear-chat': { max: 10, windowMs: 10_000 },
-	'group:clear-group-chat': { max: 10, windowMs: 10_000 },
-	'group:delete-group-chat': { max: 10, windowMs: 10_000 },
-	'group:leave-group-chat': { max: 10, windowMs: 10_000 },
+	'message:send': { max: 30, windowMs: 10_000 },
+	'group:message:send': { max: 30, windowMs: 10_000 },
+	'chat:create-chat': { max: 10, windowMs: 60_000 },
+	'group:create-group': { max: 10, windowMs: 60_000 },
+	'audio_call:join': { max: 10, windowMs: 30_000 },
+	'video_call:join': { max: 10, windowMs: 30_000 },
+	'group_call:join': { max: 10, windowMs: 30_000 },
+	'group_video_call:join': { max: 10, windowMs: 30_000 },
+	'chat:delete-chat': { max: 20, windowMs: 10_000 },
+	'chat:clear-chat': { max: 20, windowMs: 10_000 },
+	'group:clear-group-chat': { max: 20, windowMs: 10_000 },
+	'group:delete-group-chat': { max: 20, windowMs: 10_000 },
+	'group:leave-group-chat': { max: 20, windowMs: 10_000 },
 }
 
 const userRateState = new Map<string, UserRateState>()
