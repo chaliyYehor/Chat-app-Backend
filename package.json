@@ -25,6 +25,8 @@
     "typescript": "^7.0.2"
   },
   "dependencies": {
+    "@arcjet/inspect": "^1.15.0",
+    "@arcjet/node": "^1.15.0",
     "@neondatabase/serverless": "^1.1.0",
     "@react-email/components": "^1.0.12",
     "@types/multer": "^2.3.0",

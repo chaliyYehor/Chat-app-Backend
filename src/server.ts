@@ -1,6 +1,6 @@
 import cors from 'cors'
 import 'dotenv/config'
-import express from 'express'
+import express, { NextFunction, Request, Response } from 'express'
 import { xss } from 'express-xss-sanitizer'
 import helmet from 'helmet'
 import http from 'http'
@@ -19,6 +19,7 @@ import { LiveKitAPI } from 'livekit-server-sdk'
 import callsRouter from './routers/callsRouter.js'
 import swaggerUi from 'swagger-ui-express'
 import { readFileSync } from 'node:fs'
+import { arcjetSecurityMiddleware, wsArcjet } from './arcjet.js'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -56,19 +57,24 @@ app.use(
 	}),
 )
 
+app.use(arcjetSecurityMiddleware())
+
 app.use(express.json())
 app.use(xss())
 
 const docsEnabled =
 	process.env.NODE_ENV !== 'production' || process.env.ENABLE_DOCS === 'true'
 if (docsEnabled) {
-	const openApiYaml = readFileSync(new URL('../docs/openapi.yaml', import.meta.url), 'utf8')
+	const openApiYaml = readFileSync(
+		new URL('../docs/openapi.yaml', import.meta.url),
+		'utf8',
+	)
 	app.get('/docs/openapi.yaml', (_req, res) => {
 		res.type('application/yaml').send(openApiYaml)
 	})
 	app.use(
 		'/docs',
-		(_req, res, next) => {
+		(_req: Request, res: Response, next: NextFunction) => {
 			res.setHeader(
 				'Content-Security-Policy',
 				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'",
@@ -86,6 +92,25 @@ if (docsEnabled) {
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
 io.use(async (socket, next) => {
+	if (wsArcjet) {
+		try {
+			const decision = await wsArcjet.protect(socket.request)
+
+			if (decision.isDenied()) {
+				const message = decision.reason.isRateLimit()
+					? 'Connection rate limit exceeded.'
+					: 'Connection rejected by security policy.'
+				return next(new Error(message))
+			}
+
+			if (decision.isErrored()) {
+				console.error('Arcjet could not evaluate WebSocket connection:', decision.reason)
+			}
+		} catch (e) {
+			console.error('WS upgrade protection error', e)
+		}
+	}
+
 	try {
 		const session = await auth.api.getSession({
 			headers: fromNodeHeaders(socket.handshake.headers),
