@@ -40,6 +40,8 @@ new LiveKitAPI({
 	secret,
 })
 
+app.set('trust proxy', 1)
+
 const io = new Server(server, {
 	path: '/ws',
 	cors: {
@@ -104,7 +106,10 @@ io.use(async (socket, next) => {
 			}
 
 			if (decision.isErrored()) {
-				console.error('Arcjet could not evaluate WebSocket connection:', decision.reason)
+				console.error(
+					'Arcjet could not evaluate WebSocket connection:',
+					decision.reason,
+				)
 			}
 		} catch (e) {
 			console.error('WS upgrade protection error', e)
