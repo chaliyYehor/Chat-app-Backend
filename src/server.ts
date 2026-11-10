@@ -17,6 +17,8 @@ import { UnauthorizedError } from './errors/unauthorized.js'
 import { configureSocket } from './socket/index.js'
 import { LiveKitAPI } from 'livekit-server-sdk'
 import callsRouter from './routers/callsRouter.js'
+import swaggerUi from 'swagger-ui-express'
+import { readFileSync } from 'node:fs'
 
 const PORT = Number(process.env.PORT) || 5000
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
@@ -56,6 +58,30 @@ app.use(
 
 app.use(express.json())
 app.use(xss())
+
+const docsEnabled =
+	process.env.NODE_ENV !== 'production' || process.env.ENABLE_DOCS === 'true'
+if (docsEnabled) {
+	const openApiYaml = readFileSync(new URL('../docs/openapi.yaml', import.meta.url), 'utf8')
+	app.get('/docs/openapi.yaml', (_req, res) => {
+		res.type('application/yaml').send(openApiYaml)
+	})
+	app.use(
+		'/docs',
+		(_req, res, next) => {
+			res.setHeader(
+				'Content-Security-Policy',
+				"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'",
+			)
+			next()
+		},
+		swaggerUi.serve,
+		swaggerUi.setup(null, {
+			swaggerUrl: '/docs/openapi.yaml',
+			customSiteTitle: 'Pulse API',
+		}),
+	)
+}
 
 app.all('/api/auth/*splat', toNodeHandler(auth))
 
