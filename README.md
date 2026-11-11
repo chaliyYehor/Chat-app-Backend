@@ -1,6 +1,6 @@
 # Pulse Backend
 
-This repository contains the backend for Pulse, a pet project for real-time chat and voice and video calls. The frontend is in a [separate repository](https://github.com/chaliyYehor/Chat-app-Frontend).
+This repository contains the backend for Pulse, a pet project for real-time chat and voice and video calls. The frontend is in a [separate repository](https://github.com/chaliyYehor/Pulse-frontend).
 
 ## Stack
 
@@ -13,7 +13,7 @@ Node.js 20 or later, a PostgreSQL database (the app uses Neon), and accounts or 
 ## Setup
 
 ```sh
-git clone https://github.com/chaliyYehor/Chat-app-Backend.git
+git clone https://github.com/chaliyYehor/Pulse-backend.git
 cd Chat-app-Backend
 npm install
 cp .env.example .env
