@@ -103,6 +103,10 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 					{
 						conversationId: parsed.data.conversationId,
 						messageId,
+						lastMessage:
+							parsed.data.text ??
+							(parsed.data.type === 'image' ? 'Image' : null),
+						lastMessageAt: newMessage.createdAt,
 					},
 				)
 				io.to(`user:${otherUserId}`).emit('notification:new_message', {
@@ -211,6 +215,11 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 				io.to(`chat:${parsed.data.chatId}`).emit('message:deleted', {
 					conversationId: parsed.data.chatId,
 					messageId: messageData.id,
+					lastMessage: lastMessageData
+						? (lastMessageData.text ??
+							(lastMessageData.type === 'image' ? 'Image' : null))
+						: null,
+					lastMessageAt: lastMessageData?.createdAt ?? null,
 				})
 
 				cb({ success: true })
