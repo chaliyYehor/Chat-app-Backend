@@ -81,7 +81,8 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 							lastMessage:
 								parsed.data.text ??
 								(parsed.data.type === 'image' ? 'Image' : null),
-							lastMessageAt: new Date(),
+							lastMessageAt: newMessage.createdAt,
+							updatedAt: newMessage.createdAt,
 						})
 						.where(eq(conversation.id, parsed.data.conversationId)),
 					db
@@ -203,6 +204,7 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 								(lastMessageData.type === 'image' ? 'Image' : null))
 							: null,
 						lastMessageAt: lastMessageData?.createdAt ?? null,
+						updatedAt: new Date(),
 					})
 					.where(eq(conversation.id, parsed.data.chatId))
 
