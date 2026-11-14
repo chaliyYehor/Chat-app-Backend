@@ -346,7 +346,7 @@ export function registerChatHandlers(io: Server, socket: Socket) {
 
 				await db
 					.update(conversation)
-					.set({ lastMessage: null, lastMessageAt: null })
+					.set({ lastMessage: null, lastMessageAt: null, updatedAt: new Date() })
 					.where(eq(conversation.id, conversationId))
 
 				await db.update(conversationUser).set({ unreadMessagesCount: 0 }).where(
