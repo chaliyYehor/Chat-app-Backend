@@ -188,14 +188,15 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 					lastSeen: lastSeenVisible ? profileLastSeen : undefined,
 				}
 
-				await Promise.all([
+				const [, unreadRows] = await Promise.all([
 					db
 						.update(group)
 						.set({
 							lastMessage:
 								parsed.data.text ??
 								(parsed.data.type === 'image' ? 'Image' : null),
-							lastMessageAt: new Date(),
+							lastMessageAt: newMessage.createdAt,
+							updatedAt: newMessage.createdAt,
 						})
 						.where(eq(group.id, parsed.data.groupId)),
 					db
@@ -208,13 +209,28 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 								eq(groupUser.groupId, parsed.data.groupId),
 								ne(groupUser.userId, userId),
 							),
-						),
+						)
+						.returning({
+							userId: groupUser.userId,
+							unreadMessagesCount: groupUser.unreadMessagesCount,
+						}),
 				])
 
-				io.to(`group:${parsed.data.groupId}`).emit('group:message:received', {
+				const groupPreview = {
 					groupId: parsed.data.groupId,
 					messageId,
-				})
+					lastMessage:
+						parsed.data.text ??
+						(parsed.data.type === 'image' ? 'Image' : null),
+					lastMessageAt: newMessage.createdAt,
+				}
+				io.to(`user:${userId}`).emit('group:message:received', groupPreview)
+				for (const unread of unreadRows) {
+					io.to(`user:${unread.userId}`).emit('group:message:received', {
+						...groupPreview,
+						unreadMessagesCount: unread.unreadMessagesCount,
+					})
+				}
 
 				socket
 					.to(`group:${parsed.data.groupId}`)
@@ -308,7 +324,7 @@ export const registerGroupHandlers = (io: Server, socket: Socket) => {
 					await tx.delete(message).where(eq(message.groupId, groupId))
 					await tx
 						.update(group)
-						.set({ lastMessage: null, lastMessageAt: null })
+						.set({ lastMessage: null, lastMessageAt: null, updatedAt: new Date() })
 						.where(eq(group.id, groupId))
 					await tx
 						.update(groupUser)

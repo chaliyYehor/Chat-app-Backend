@@ -74,7 +74,7 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 					throw new Error('Failed to create message')
 				}
 
-				await Promise.all([
+				const [, unreadRows] = await Promise.all([
 					db
 						.update(conversation)
 						.set({
@@ -95,20 +95,23 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 								eq(conversationUser.conversationId, parsed.data.conversationId),
 								eq(conversationUser.userId, otherUserId),
 							),
-						),
+						)
+						.returning({ unreadMessagesCount: conversationUser.unreadMessagesCount }),
 				])
 
-				io.to([`user:${otherUserId}`, `user:${userId}`]).emit(
-					'message:received',
-					{
+				const preview = {
 						conversationId: parsed.data.conversationId,
 						messageId,
 						lastMessage:
 							parsed.data.text ??
 							(parsed.data.type === 'image' ? 'Image' : null),
 						lastMessageAt: newMessage.createdAt,
-					},
-				)
+				}
+				io.to(`user:${otherUserId}`).emit('message:received', {
+					...preview,
+					unreadMessagesCount: unreadRows[0]?.unreadMessagesCount,
+				})
+				io.to(`user:${userId}`).emit('message:received', preview)
 				io.to(`user:${otherUserId}`).emit('notification:new_message', {
 					conversationId: parsed.data.conversationId,
 					messageId,
