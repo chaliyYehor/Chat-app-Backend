@@ -117,7 +117,11 @@ export function registerMessageHandlers(io: Server, socket: Socket) {
 					messageId,
 				})
 
-				io.to(`chat:${parsed.data.conversationId}`).emit(
+				io.to([
+					`chat:${parsed.data.conversationId}`,
+					`user:${userId}`,
+					`user:${otherUserId}`,
+				]).emit(
 					'message:new_messages',
 					[newMessage],
 				)
