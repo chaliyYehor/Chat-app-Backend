@@ -77,7 +77,7 @@ export const auth = betterAuth({
 
 		sendResetPassword: async ({ user, url }) => {
 			const { error } = await resend.emails.send({
-				from: `Chat App <${process.env.RESEND_EMAIL as string}>`,
+				from: `Pulse <${process.env.RESEND_EMAIL as string}>`,
 				to: user.email,
 				subject: 'Reset your password',
 				react: ResetPasswordEmail({ username: user.name, resetUrl: url }),
