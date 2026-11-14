@@ -1,4 +1,5 @@
-import { betterAuth } from 'better-auth'
+import { APIError, betterAuth } from 'better-auth'
+import { createAuthMiddleware } from 'better-auth/api'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { db } from '../db/db.js'
 import { Resend } from 'resend'
@@ -17,6 +18,29 @@ const allowedOrigins = [
 ]
 
 export const auth = betterAuth({
+	hooks: {
+		before: createAuthMiddleware(async ctx => {
+			if (
+				![
+					'/change-password',
+					'/set-password',
+					'/delete-user',
+					'/revoke-session',
+					'/revoke-sessions',
+					'/revoke-other-sessions',
+				].includes(ctx.path)
+			) return
+
+			if (!ctx.headers) return
+			const session = await auth.api.getSession({ headers: ctx.headers })
+			if (session?.user.email.toLowerCase() === 'demo@erxxue.dev') {
+				throw new APIError('FORBIDDEN', {
+					message: 'This action is unavailable for the demo account',
+				})
+			}
+		}),
+	},
+
 	database: drizzleAdapter(db, {
 		provider: 'pg',
 	}),
