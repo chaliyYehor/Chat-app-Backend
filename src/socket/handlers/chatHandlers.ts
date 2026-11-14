@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io'
-import { conversation, conversationUser, message, user } from '../../db/schemas/schema.js'
+import { conversation, conversationUser, message, user, userProfile } from '../../db/schemas/schema.js'
 import { db } from '../../db/db.js'
 import { and, eq, or } from 'drizzle-orm'
 import cloudinary from '../../lib/cloudinary.js'
@@ -81,29 +81,57 @@ export function registerChatHandlers(io: Server, socket: Socket) {
 
 				const conversationId = randomUUID()
 
-				await db.transaction(async tx => {
-					await tx.insert(conversation).values({
-						id: conversationId,
-						userOneId: socket.data.id,
-						userTwoId: userId,
-					})
+				const { created: createdConversation, memberships } = await db.transaction(async tx => {
+					const [created] = await tx
+						.insert(conversation)
+						.values({
+							id: conversationId,
+							userOneId: socket.data.id,
+							userTwoId: userId,
+						})
+						.returning()
 
-					await tx.insert(conversationUser).values([
-						{
-							conversationId,
-							userId: socket.data.id,
-						},
-						{
-							conversationId,
-							userId,
-						},
-					])
+					const memberships = await tx
+						.insert(conversationUser)
+						.values([
+							{ conversationId, userId: socket.data.id },
+							{ conversationId, userId },
+						])
+						.returning()
+					return { created, memberships }
+				})
+				const profiles = await db.query.userProfile.findMany({
+				where: or(
+					eq(userProfile.userId, socket.data.id),
+					eq(userProfile.userId, userId),
+				),
+					columns: {
+						userId: true,
+						name: true,
+						imageUrl: true,
+						status: true,
+						previouslySetStatus: true,
+						lastSeen: true,
+					},
 				})
 				io.in([`user:${socket.data.id}`, `user:${userId}`]).socketsJoin(
 					`chat:${conversationId}`,
 				)
 
-				io.to([`user:${socket.data.id}`, `user:${userId}`]).emit('chat:added')
+				for (const participantId of [socket.data.id, userId]) {
+					io.to(`user:${participantId}`).emit('chat:added', {
+						conversation: createdConversation,
+						conversationUser: memberships.find(
+							membership => membership.userId === participantId,
+						),
+						userOne: profiles.find(
+							profile => profile.userId === createdConversation.userOneId,
+						),
+						userTwo: profiles.find(
+							profile => profile.userId === createdConversation.userTwoId,
+						),
+					})
+				}
 
 				cb({
 					success: true,
@@ -151,6 +179,8 @@ export function registerChatHandlers(io: Server, socket: Socket) {
 				),
 				columns: {
 					id: true,
+					userOneId: true,
+					userTwoId: true,
 				},
 			})
 
@@ -188,7 +218,11 @@ export function registerChatHandlers(io: Server, socket: Socket) {
 
 				await db.delete(conversation).where(eq(conversation.id, conversationId))
 
-				io.to(`chat:${conversationId}`).emit('chat:deleted', { conversationId })
+				io.to([
+					`chat:${conversationId}`,
+					`user:${userValid.userOneId}`,
+					`user:${userValid.userTwoId}`,
+				]).emit('chat:deleted', { conversationId })
 				io.in(`chat:${conversationId}`).socketsLeave(`chat:${conversationId}`)
 
 				cb({
